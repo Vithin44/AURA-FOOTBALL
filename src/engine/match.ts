@@ -51,10 +51,10 @@ export function createMatch(params: CreateMatchParams): Match {
     params.venue ?? (params.homeTeam.id === params.playerTeamId ? 'home' : 'away');
 
   return {
-    id: params.id ?? (params.seed !== undefined ? `match_${params.seed}` : `match_${params.homeTeam.id}_vs_${params.awayTeam.id}`),
+    id: params.id ?? `match_${params.homeTeam.id}_vs_${params.awayTeam.id}`,
     competition: params.competition ?? 'Campeonato Estadual',
     season: params.season ?? 1,
-    date: params.date ?? '2026-09-22',
+    date: params.date ?? new Date().toISOString().split('T')[0],
     minute: MATCH_START_MINUTE,
     addedMinute: undefined,
     finalMinute: MATCH_REGULATION_MINUTES,

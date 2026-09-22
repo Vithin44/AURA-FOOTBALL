@@ -216,8 +216,6 @@ export type MatchEventType =
   | 'red_card'
   | 'injury'
   | 'substitution'
-  | 'free_kick'
-  | 'penalty'
   | 'half_time'
   | 'full_time';
 
@@ -267,6 +265,7 @@ export interface MatchMoment {
   teamId: string;
   status: MatchMomentStatus;
   seed: number;
+  timeLimitSeconds: number; // 15s para momento normal, 25s para crítico/difícil
 }
 
 export interface Match {

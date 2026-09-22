@@ -24,7 +24,6 @@ import {
   Player,
 } from '../types';
 import { SeedableRNG, createRNG } from './rng';
-import { createMatch, advanceMatchMinute, simulateMatch } from './match';
 
 // Constantes Oficiais do Sistema de Momentos
 export const MAX_MOMENTS_PER_MATCH = 5;
@@ -42,15 +41,13 @@ export const DISALLOWED_MOMENT_EVENT_TYPES: readonly MatchEventType[] = [
   'red_card',
 ];
 
-// Tipos de eventos elegíveis para análise de momento
+// Tipos de eventos elegíveis para análise de momento (estritamente presentes em MatchEventType)
 export const ELIGIBLE_MOMENT_EVENT_TYPES: readonly MatchEventType[] = [
   'chance',
   'shot',
   'goal',
   'foul',
   'corner',
-  'free_kick',
-  'penalty',
 ];
 
 // Tipos oficiais válidos de MatchMoment
@@ -178,10 +175,6 @@ export function mapEventToMomentType(
       return seedVal < 40 ? 'cross' : 'corner';
     case 'foul':
       return seedVal < 50 ? 'free_kick' : 'defensive';
-    case 'free_kick':
-      return 'free_kick';
-    case 'penalty':
-      return 'penalty';
     default:
       return 'chance';
   }
@@ -271,6 +264,13 @@ export function createMomentFromEvent(params: CreateMomentParams): MatchMoment {
   // Identificador determinístico único combinando partida, evento e minuto
   const id = `moment_${match.id}_${event.id}_m${event.minute}`;
 
+  // Cronômetro de decisões futuras: 25 segundos para momentos críticos/difíceis, 15 segundos para momentos normais
+  const isDifficult =
+    event.importance === 'critical' ||
+    momentType === 'penalty' ||
+    momentType === 'one_on_one';
+  const timeLimitSeconds = isDifficult ? 25 : 15;
+
   return {
     id,
     matchId: match.id,
@@ -285,6 +285,7 @@ export function createMomentFromEvent(params: CreateMomentParams): MatchMoment {
     teamId: event.teamId,
     status: params.status ?? 'pending',
     seed,
+    timeLimitSeconds,
   };
 }
 
@@ -403,13 +404,100 @@ export function runMomentTests(): MomentTestCaseResult[] {
     name: 'Atleta Adversário',
   };
 
-  const createBaseMatch = (seed = 987654321): Match =>
-    createMatch({
-      homeTeam: homeClub,
-      awayTeam: awayClub,
-      playerTeamId: homeClub.id,
-      seed,
+  const createBaseMatch = (seed = 987654321): Match => ({
+    id: `match_${homeClub.id}_vs_${awayClub.id}`,
+    competition: 'Campeonato Estadual',
+    season: 1,
+    date: '2026-09-22',
+    minute: 0,
+    finalMinute: 90,
+    homeTeam: homeClub,
+    awayTeam: awayClub,
+    playerTeamId: homeClub.id,
+    venue: 'home',
+    homeScore: 0,
+    awayScore: 0,
+    status: 'scheduled',
+    period: 'first_half',
+    seed,
+    events: [],
+    moments: [],
+  });
+
+  const advanceMockMinute = (match: Match, player: Player, rng: SeedableRNG): Match => {
+    const nextMinute = match.minute + 1;
+    const events: MatchEvent[] = [];
+    const roll = rng.nextInt(1, 100);
+    if (roll <= 25) {
+      const types: MatchEventType[] = ['chance', 'shot', 'corner', 'foul', 'goal'];
+      const type = types[rng.nextInt(0, types.length - 1)];
+      const seedVal = rng.nextInt(1, 999999999);
+      events.push({
+        id: `evt_${match.id}_${nextMinute}_${seedVal}`,
+        matchId: match.id,
+        minute: nextMinute,
+        type,
+        teamId: homeClub.id,
+        playerId: player.id,
+        description: `Lance perigoso aos ${nextMinute}'`,
+        importance: type === 'goal' ? 'critical' : 'high',
+        isSignificant: true,
+        seed: seedVal,
+      });
+    }
+
+    const newMoments = evaluateAndProcessMoments(
+      { ...match, minute: nextMinute },
+      events,
+      player
+    );
+
+    return {
+      ...match,
+      minute: nextMinute,
+      events: [...match.events, ...events],
+      moments: [...match.moments, ...newMoments],
+    };
+  };
+
+  const simulateMockMatch = (match: Match, player: Player): Match => {
+    let current: Match = { ...match, status: 'live' };
+    const rng = createRNG(match.seed);
+
+    current.events.push({
+      id: `evt_kickoff_${match.id}`,
+      matchId: match.id,
+      minute: 0,
+      type: 'kickoff',
+      teamId: homeClub.id,
+      description: 'Início',
+      importance: 'low',
+      isSignificant: false,
+      seed: rng.nextInt(1, 999999999),
     });
+
+    for (let m = 1; m <= 90; m++) {
+      current = advanceMockMinute(current, player, rng);
+    }
+
+    current.events.push({
+      id: `evt_fulltime_${match.id}`,
+      matchId: match.id,
+      minute: 90,
+      type: 'full_time',
+      teamId: homeClub.id,
+      description: 'Fim',
+      importance: 'low',
+      isSignificant: false,
+      seed: rng.nextInt(1, 999999999),
+    });
+
+    return {
+      ...current,
+      status: 'finished',
+      period: 'finished',
+    };
+  };
 
   // ----------------------------------------------------
   // GRUPO 1: Estrutura (Testes 1 a 6)
@@ -695,10 +783,10 @@ export function runMomentTests(): MomentTestCaseResult[] {
       id: 'evt_test_10',
       matchId: baseMatch.id,
       minute: 35,
-      type: 'penalty',
+      type: 'foul',
       teamId: homeClub.id,
       playerId: dummyPlayer.id,
-      description: 'Pênalti para o atleta bater.',
+      description: 'Falta perigosa sofrida pelo atleta na entrada da área.',
       importance: 'critical',
       isSignificant: true,
       seed: 1010,
@@ -709,7 +797,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
       id: 10,
       category: 'Conversão',
       name: 'Evento relevante do jogador pode gerar Momento',
-      description: 'Pênalti ou falta envolvendo o jogador é aceito diretamente pela camada de momentos',
+      description: 'Falta ou lance relevante envolvendo o jogador é aceito diretamente pela camada de momentos',
       expected: true,
       actual: eligible,
       passed: eligible,
@@ -724,8 +812,8 @@ export function runMomentTests(): MomentTestCaseResult[] {
   {
     const matchA = createBaseMatch(55555);
     const matchB = createBaseMatch(55555);
-    const simA = simulateMatch(matchA, dummyPlayer);
-    const simB = simulateMatch(matchB, dummyPlayer);
+    const simA = simulateMockMatch(matchA, dummyPlayer);
+    const simB = simulateMockMatch(matchB, dummyPlayer);
 
     const sameLength = simA.moments.length === simB.moments.length;
     const sameTitles =
@@ -747,8 +835,8 @@ export function runMomentTests(): MomentTestCaseResult[] {
   {
     const matchA = createBaseMatch(12345);
     const matchB = createBaseMatch(12345);
-    const simA = simulateMatch(matchA, dummyPlayer);
-    const simB = simulateMatch(matchB, dummyPlayer);
+    const simA = simulateMockMatch(matchA, dummyPlayer);
+    const simB = simulateMockMatch(matchB, dummyPlayer);
 
     const sameIds =
       simA.moments.length > 0 &&
@@ -768,7 +856,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
   // 13. Ordem dos Momentos é determinística
   {
     const matchA = createBaseMatch(88888);
-    const simA = simulateMatch(matchA, dummyPlayer);
+    const simA = simulateMockMatch(matchA, dummyPlayer);
     let ordered = true;
     for (let i = 1; i < simA.moments.length; i++) {
       if (simA.moments[i].minute < simA.moments[i - 1].minute) {
@@ -809,6 +897,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
         teamId: homeClub.id,
         status: 'pending',
         seed: i,
+        timeLimitSeconds: 15,
       })),
     };
 
@@ -856,6 +945,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
           teamId: homeClub.id,
           status: 'pending',
           seed: 1515,
+          timeLimitSeconds: 15,
         },
       ],
     };
@@ -969,7 +1059,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
   {
     const baseMatch = createBaseMatch();
     const initialOvr = dummyPlayer.ovr;
-    simulateMatch(baseMatch, dummyPlayer);
+    simulateMockMatch(baseMatch, dummyPlayer);
     const passed = dummyPlayer.ovr === initialOvr;
 
     results.push({
@@ -987,7 +1077,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
   {
     const baseMatch = createBaseMatch();
     const initialFin = dummyPlayer.attributes.FIN;
-    simulateMatch(baseMatch, dummyPlayer);
+    simulateMockMatch(baseMatch, dummyPlayer);
     const passed = dummyPlayer.attributes.FIN === initialFin;
 
     results.push({
@@ -1005,7 +1095,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
   {
     const baseMatch = createBaseMatch();
     const initialAura = dummyPlayer.aura;
-    simulateMatch(baseMatch, dummyPlayer);
+    simulateMockMatch(baseMatch, dummyPlayer);
     const passed = dummyPlayer.aura === initialAura;
 
     results.push({
@@ -1023,7 +1113,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
   {
     const baseMatch = createBaseMatch();
     const initialXP = dummyPlayer.xp;
-    simulateMatch(baseMatch, dummyPlayer);
+    simulateMockMatch(baseMatch, dummyPlayer);
     const passed = dummyPlayer.xp === initialXP;
 
     results.push({
@@ -1041,7 +1131,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
   {
     const baseMatch = createBaseMatch();
     const initialInf = dummyPlayer.influence;
-    simulateMatch(baseMatch, dummyPlayer);
+    simulateMockMatch(baseMatch, dummyPlayer);
     const passed = dummyPlayer.influence === initialInf;
 
     results.push({
@@ -1095,14 +1185,14 @@ export function runMomentTests(): MomentTestCaseResult[] {
   // 23. Simulação pode produzir Momentos
   {
     const baseMatch = createBaseMatch(12345);
-    const simulated = simulateMatch(baseMatch, dummyPlayer);
+    const simulated = simulateMockMatch(baseMatch, dummyPlayer);
     const hasMoments = simulated.moments.length > 0 && simulated.moments.length <= MAX_MOMENTS_PER_MATCH;
 
     results.push({
       id: 23,
       category: 'Partida',
       name: 'Simulação pode produzir Momentos',
-      description: 'Ao executar simulateMatch com o atleta do usuário, momentos são registrados no estado da partida',
+      description: 'Ao executar simulateMockMatch com o atleta do usuário, momentos são registrados no estado da partida',
       expected: true,
       actual: hasMoments,
       passed: hasMoments,
@@ -1112,10 +1202,11 @@ export function runMomentTests(): MomentTestCaseResult[] {
   // 24. Avanço de minuto pode produzir Momentos
   {
     let match = createBaseMatch(67890);
+    const rng = createRNG(match.seed);
     // Avançamos minutos até que um momento seja gerado
     let momentGenerated = false;
     for (let min = 1; min <= 90; min++) {
-      match = advanceMatchMinute(match, dummyPlayer);
+      match = advanceMockMinute(match, dummyPlayer, rng);
       if (match.moments.length > 0) {
         momentGenerated = true;
         break;
@@ -1136,7 +1227,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
   // 25. Momentos ficam registrados na partida
   {
     const baseMatch = createBaseMatch(99999);
-    const simulated = simulateMatch(baseMatch, dummyPlayer);
+    const simulated = simulateMockMatch(baseMatch, dummyPlayer);
     const momentsAreInMatch = Array.isArray(simulated.moments);
 
     results.push({
@@ -1153,7 +1244,7 @@ export function runMomentTests(): MomentTestCaseResult[] {
   // 26. Eventos originais continuam preservados
   {
     const baseMatch = createBaseMatch(11111);
-    const simulated = simulateMatch(baseMatch, dummyPlayer);
+    const simulated = simulateMockMatch(baseMatch, dummyPlayer);
     const hasEvents = simulated.events.length > 0;
     const hasKickoff = simulated.events.some((e) => e.type === 'kickoff');
     const hasFullTime = simulated.events.some((e) => e.type === 'full_time');

@@ -6,7 +6,7 @@
  * AURA Green (#B7FF3C), IBM Plex Mono e tipografia Archivo.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCareer } from '../state/careerState';
 import { useNavigation } from '../state/navigationState';
 import { Card } from '../components/Card';
@@ -34,6 +34,7 @@ import {
 import {
   Swords,
   Play,
+  Pause,
   FastForward,
   RotateCcw,
   Zap,
@@ -47,6 +48,7 @@ import {
   Activity,
   Filter,
   Flame,
+  StepForward,
 } from 'lucide-react';
 
 export function MatchPage() {
@@ -71,6 +73,11 @@ export function MatchPage() {
     })
   );
 
+  // Estados da simulação automática visual (~320ms por minuto = ~29s para 90min)
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isAutoPausedByMoment, setIsAutoPausedByMoment] = useState<boolean>(false);
+  const [activeMomentId, setActiveMomentId] = useState<string | null>(null);
+
   // Histórico de lances da partida de teste
   const [log, setLog] = useState<string[]>([
     'Partida de teste criada e pronta para o pontapé inicial.',
@@ -79,9 +86,97 @@ export function MatchPage() {
   // Filtro de eventos do log
   const [eventFilter, setEventFilter] = useState<'all' | 'significant' | 'player'>('all');
 
-  // Avança 1 minuto na engine
+  // Loop de simulação automática visual (~320ms por tick de minuto)
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    if (match.status === 'finished') {
+      setIsPlaying(false);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setMatch((prev) => {
+        if (!canAdvanceMatch(prev)) {
+          setIsPlaying(false);
+          return prev;
+        }
+
+        const next = advanceMatchMinute(prev, career.player);
+
+        let eventMsg = `Minuto ${formatMatchClock(next)}: partida em andamento.`;
+        if (next.status === 'half_time') {
+          eventMsg = `Minuto 45': Fim do primeiro tempo! Equipes vão para o INTERVALO.`;
+          setIsPlaying(false);
+        } else if (next.status === 'finished') {
+          eventMsg = `Minuto 90': Apito final! FIM DE JOGO. Placar final: ${next.homeTeam.shortName} ${next.homeScore} x ${next.awayScore} ${next.awayTeam.shortName}.`;
+          setIsPlaying(false);
+        } else if (prev.status === 'half_time' && next.minute === 46) {
+          eventMsg = `Minuto 46': Começa o 2º tempo da partida.`;
+        } else if (prev.status === 'scheduled') {
+          eventMsg = `Minuto 1': Bola rolando! Início do confronto.`;
+        }
+        setLog((l) => [eventMsg, ...l.slice(0, 19)]);
+
+        // Pausa obrigatória se houver Momento gerado e pendente
+        const pendingMoments = next.moments.filter(
+          (m) => m.status === 'pending' || m.status === 'active'
+        );
+        if (pendingMoments.length > 0) {
+          const newest = pendingMoments[pendingMoments.length - 1];
+          setIsPlaying(false);
+          setIsAutoPausedByMoment(true);
+          setActiveMomentId(newest.id);
+        }
+
+        return next;
+      });
+    }, 320);
+
+    return () => clearInterval(timer);
+  }, [isPlaying, match.status, career.player]);
+
+  // Retoma simulação após resolver/visualizar o momento ativo
+  const handleResolveMomentAndContinue = () => {
+    setMatch((prev) => ({
+      ...prev,
+      moments: prev.moments.map((m) =>
+        m.id === activeMomentId || m.status === 'pending' || m.status === 'active'
+          ? { ...m, status: 'resolved' as const }
+          : m
+      ),
+    }));
+    setIsAutoPausedByMoment(false);
+    setActiveMomentId(null);
+    if (match.status !== 'finished') {
+      setIsPlaying(true);
+    }
+  };
+
+  // Alterna execução da simulação automática
+  const handleTogglePlay = () => {
+    if (match.status === 'finished') return;
+
+    if (isAutoPausedByMoment) {
+      handleResolveMomentAndContinue();
+      return;
+    }
+
+    if (isPlaying) {
+      setIsPlaying(false);
+    } else {
+      setIsPlaying(true);
+    }
+  };
+
+  // Avança 1 minuto manualmente na engine (para testes técnicos rápidos)
   const handleAdvanceMinute = () => {
     if (!canAdvanceMatch(match)) return;
+
+    if (isAutoPausedByMoment) {
+      handleResolveMomentAndContinue();
+      return;
+    }
 
     setMatch((prev) => {
       const next = advanceMatchMinute(prev, career.player);
@@ -89,8 +184,10 @@ export function MatchPage() {
 
       if (next.status === 'half_time') {
         eventMsg = `Minuto 45': Fim do primeiro tempo! Equipes vão para o INTERVALO.`;
+        setIsPlaying(false);
       } else if (next.status === 'finished') {
         eventMsg = `Minuto 90': Apito final! FIM DE JOGO. Placar final: ${next.homeTeam.shortName} ${next.homeScore} x ${next.awayScore} ${next.awayTeam.shortName}.`;
+        setIsPlaying(false);
       } else if (prev.status === 'half_time' && next.minute === 46) {
         eventMsg = `Minuto 46': Começa o 2º tempo da partida.`;
       } else if (prev.status === 'scheduled') {
@@ -98,13 +195,27 @@ export function MatchPage() {
       }
 
       setLog((l) => [eventMsg, ...l.slice(0, 19)]);
+
+      const pendingMoments = next.moments.filter(
+        (m) => m.status === 'pending' || m.status === 'active'
+      );
+      if (pendingMoments.length > 0) {
+        const newest = pendingMoments[pendingMoments.length - 1];
+        setIsPlaying(false);
+        setIsAutoPausedByMoment(true);
+        setActiveMomentId(newest.id);
+      }
+
       return next;
     });
   };
 
-  // Simula a partida integralmente até os 90'
+  // Simula a partida integralmente até os 90' de forma instantânea
   const handleSimulateFull = () => {
     if (match.status === 'finished') return;
+    setIsPlaying(false);
+    setIsAutoPausedByMoment(false);
+    setActiveMomentId(null);
 
     setMatch((prev) => {
       const simulated = simulateMatch(prev, career.player);
@@ -118,6 +229,10 @@ export function MatchPage() {
 
   // Reinicia a partida de teste
   const handleResetMatch = (venue: 'home' | 'away' = 'home') => {
+    setIsPlaying(false);
+    setIsAutoPausedByMoment(false);
+    setActiveMomentId(null);
+
     const isHome = venue === 'home';
     const newSeed = Math.floor(Math.random() * 900000) + 10000;
     const fresh = createMatch({
@@ -135,6 +250,12 @@ export function MatchPage() {
       `Nova partida reiniciada com semente ${newSeed}. Mando: ${isHome ? 'CASA' : 'FORA'}. Minuto 0'.`,
     ]);
   };
+
+  // Momento atualmente em destaque (ativo ou o mais recente)
+  const activeMoment =
+    match.moments.find(
+      (m) => m.id === activeMomentId || m.status === 'pending' || m.status === 'active'
+    ) || (isAutoPausedByMoment ? match.moments[match.moments.length - 1] : null);
 
   // Adiciona gol para testes do motor
   const handleAddGoal = (team: 'home' | 'away') => {
@@ -343,27 +464,48 @@ export function MatchPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Botão Principal: AVANÇAR 1 MINUTO */}
+            {/* Botão Principal: Simulação Automática / Pausa / Retomada */}
             <Button
               variant="primary"
               size="md"
-              disabled={!canAdvanceMatch(match)}
-              onClick={handleAdvanceMinute}
+              disabled={match.status === 'finished'}
+              onClick={handleTogglePlay}
               className="font-mono text-xs uppercase"
             >
-              <Play size={14} />
-              {match.status === 'scheduled'
-                ? 'INICIAR PARTIDA (0\' → 1\')'
-                : match.status === 'half_time'
-                ? 'INICIAR 2º TEMPO (45\' → 46\')'
-                : match.minute === 89
-                ? 'APITO FINAL (89\' → 90\')'
-                : match.status === 'finished'
-                ? 'PARTIDA FINALIZADA'
-                : 'AVANÇAR 1 MINUTO'}
+              {match.status === 'scheduled' ? (
+                <>
+                  <Play size={14} />
+                  INICIAR PARTIDA
+                </>
+              ) : isAutoPausedByMoment ? (
+                <>
+                  <Play size={14} />
+                  CONTINUAR PARTIDA
+                </>
+              ) : isPlaying ? (
+                <>
+                  <Pause size={14} />
+                  PAUSAR PARTIDA
+                </>
+              ) : match.status === 'half_time' ? (
+                <>
+                  <Play size={14} />
+                  INICIAR 2º TEMPO
+                </>
+              ) : match.status === 'finished' ? (
+                <>
+                  <CheckCircle2 size={14} />
+                  PARTIDA FINALIZADA
+                </>
+              ) : (
+                <>
+                  <Play size={14} />
+                  CONTINUAR PARTIDA
+                </>
+              )}
             </Button>
 
-            {/* Botão: SIMULAR PARTIDA (Leva direto ao 90') */}
+            {/* Botão: SIMULAR PARTIDA (Pula a simulação visual e vai direto aos 90') */}
             <Button
               variant="outline"
               size="md"
@@ -373,6 +515,19 @@ export function MatchPage() {
             >
               <FastForward size={14} />
               Simular Partida (Direto aos 90')
+            </Button>
+
+            {/* Botão Técnico / Debug: AVANÇAR 1 MINUTO */}
+            <Button
+              variant="secondary"
+              size="md"
+              disabled={!canAdvanceMatch(match)}
+              onClick={handleAdvanceMinute}
+              className="font-mono text-xs"
+              title="Avanço manual passo a passo para testes de engine"
+            >
+              <StepForward size={13} />
+              Avançar 1 Minuto
             </Button>
 
             {/* Botão de Reiniciar Partida de Teste */}
@@ -399,32 +554,41 @@ export function MatchPage() {
         </div>
       </div>
 
-      {/* Banner de Destaque: MOMENTO DISPONÍVEL / ATIVO (Prompt 10, Seções 29 e 30) */}
-      {match.moments.length > 0 && (
-        <div className="mb-6 p-4 rounded-2xl border border-[#B7FF3C]/40 bg-[#121A14] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase bg-[#B7FF3C] text-[#080909]">
-                MOMENTO DISPONÍVEL
+      {/* Banner de Destaque: MOMENTO DISPONÍVEL / ATIVO COM PAUSA OBRIGATÓRIA (Prompt 10) */}
+      {activeMoment && (
+        <div className="mb-6 p-5 rounded-2xl border-2 border-[#B7FF3C] bg-[#121A14] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl shadow-[#B7FF3C]/10">
+          <div className="space-y-1.5 flex-1">
+            <div className="flex items-center flex-wrap gap-2">
+              <span className="px-2.5 py-0.5 rounded text-[10px] font-mono font-black uppercase bg-[#B7FF3C] text-[#080909]">
+                MOMENTO EM ANDAMENTO
               </span>
               <span className="text-xs font-mono font-bold text-[#B7FF3C]">
-                {match.moments[match.moments.length - 1].minute}'
+                {activeMoment.minute}'
               </span>
-              <span className="text-xs font-mono uppercase text-[#8B918E]">
-                [{match.moments[match.moments.length - 1].status === 'pending' ? 'ATIVO' : match.moments[match.moments.length - 1].status.toUpperCase()}]
+              <span className="text-[10px] font-mono font-bold uppercase text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                Pausa Obrigatória
+              </span>
+              <span className="text-[10px] font-mono text-[#8B918E] bg-[#191C1C] px-2 py-0.5 rounded border border-[#262B2B]">
+                Tempo Limite: {activeMoment.timeLimitSeconds}s
               </span>
             </div>
             <h3 className="text-lg font-black text-[#F4F5F2] font-display uppercase tracking-tight">
-              {match.moments[match.moments.length - 1].title}
+              {activeMoment.title}
             </h3>
-            <p className="text-xs text-[#D8DDD9]">
-              {match.moments[match.moments.length - 1].description}
+            <p className="text-xs text-[#D8DDD9] leading-relaxed">
+              {activeMoment.description}
             </p>
           </div>
-          <div className="text-right shrink-0">
-            <span className="text-[10px] font-mono text-[#8B918E] bg-[#191C1C] px-2.5 py-1 rounded-lg border border-[#262B2B]">
-              Decisões estarão disponíveis em breve
-            </span>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0 w-full md:w-auto">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleResolveMomentAndContinue}
+              className="font-mono text-xs uppercase"
+            >
+              <Play size={14} />
+              Continuar Partida
+            </Button>
           </div>
         </div>
       )}
