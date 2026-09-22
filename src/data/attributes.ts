@@ -96,20 +96,38 @@ export const ATTRIBUTES_DATA: Record<AttributeId, AttributeMetadata> = {
 };
 
 /**
- * Matriz de Importância e Pesos de Atributos por Posição (Item 4 do Prompt 05)
- * Dados estruturados para alimentar o próximo sistema de cálculo de OVR (Prompt 06).
+ * Pesos Oficiais de OVR por Posição (Prompt 06, Item 2)
+ * Fonte Única de Verdade para o cálculo de OVR no AURA Football.
+ * Cada posição totaliza exatamente 100%.
+ */
+export const POSITION_OVR_WEIGHTS: Record<PositionId, Record<AttributeId, number>> = {
+  GOL: { VEL: 10, FIN: 0,  DRI: 0,  FOR: 20, PAS: 15, DEF: 55 },
+  ZAG: { VEL: 15, FIN: 0,  DRI: 5,  FOR: 25, PAS: 15, DEF: 40 },
+  LE:  { VEL: 25, FIN: 5,  DRI: 15, FOR: 10, PAS: 15, DEF: 30 },
+  LD:  { VEL: 25, FIN: 5,  DRI: 15, FOR: 10, PAS: 15, DEF: 30 },
+  VOL: { VEL: 10, FIN: 5,  DRI: 10, FOR: 15, PAS: 30, DEF: 30 },
+  MC:  { VEL: 10, FIN: 10, DRI: 20, FOR: 10, PAS: 30, DEF: 20 },
+  MEI: { VEL: 10, FIN: 15, DRI: 25, FOR: 5,  PAS: 35, DEF: 10 },
+  PE:  { VEL: 25, FIN: 15, DRI: 30, FOR: 5,  PAS: 15, DEF: 10 },
+  PD:  { VEL: 25, FIN: 15, DRI: 30, FOR: 5,  PAS: 15, DEF: 10 },
+  ATA: { VEL: 20, FIN: 35, DRI: 25, FOR: 10, PAS: 8,  DEF: 2 },
+};
+
+/**
+ * Matriz de Importância e Pesos de Atributos por Posição (Item 4 do Prompt 05 & Prompt 06)
+ * Conectada diretamente aos pesos oficiais de OVR.
  */
 export const POSITION_ATTRIBUTE_PROFILES: Record<PositionId, PositionAttributeProfile> = {
   GOL: {
     importance: {
       DEF: 'Crítico',
       FOR: 'Alto',
-      VEL: 'Médio',
       PAS: 'Médio',
+      VEL: 'Médio',
       DRI: 'Baixo',
       FIN: 'Baixo',
     },
-    weights: { DEF: 0.40, FOR: 0.25, VEL: 0.15, PAS: 0.10, DRI: 0.05, FIN: 0.05 },
+    weights: POSITION_OVR_WEIGHTS.GOL,
   },
   ZAG: {
     importance: {
@@ -120,94 +138,94 @@ export const POSITION_ATTRIBUTE_PROFILES: Record<PositionId, PositionAttributePr
       DRI: 'Baixo',
       FIN: 'Baixo',
     },
-    weights: { DEF: 0.40, FOR: 0.25, VEL: 0.15, PAS: 0.10, DRI: 0.05, FIN: 0.05 },
+    weights: POSITION_OVR_WEIGHTS.ZAG,
   },
   LE: {
     importance: {
+      DEF: 'Crítico',
       VEL: 'Crítico',
-      DEF: 'Alto',
       PAS: 'Alto',
       DRI: 'Médio',
       FOR: 'Médio',
       FIN: 'Baixo',
     },
-    weights: { VEL: 0.28, DEF: 0.25, PAS: 0.20, DRI: 0.12, FOR: 0.10, FIN: 0.05 },
+    weights: POSITION_OVR_WEIGHTS.LE,
   },
   LD: {
     importance: {
+      DEF: 'Crítico',
       VEL: 'Crítico',
-      DEF: 'Alto',
       PAS: 'Alto',
       DRI: 'Médio',
       FOR: 'Médio',
       FIN: 'Baixo',
     },
-    weights: { VEL: 0.28, DEF: 0.25, PAS: 0.20, DRI: 0.12, FOR: 0.10, FIN: 0.05 },
+    weights: POSITION_OVR_WEIGHTS.LD,
   },
   VOL: {
     importance: {
       DEF: 'Crítico',
+      PAS: 'Crítico',
       FOR: 'Alto',
-      PAS: 'Alto',
       VEL: 'Médio',
       DRI: 'Médio',
       FIN: 'Baixo',
     },
-    weights: { DEF: 0.32, FOR: 0.22, PAS: 0.20, VEL: 0.12, DRI: 0.10, FIN: 0.04 },
+    weights: POSITION_OVR_WEIGHTS.VOL,
   },
   MC: {
     importance: {
       PAS: 'Crítico',
       DRI: 'Alto',
-      DEF: 'Médio',
+      DEF: 'Alto',
+      FIN: 'Médio',
       FOR: 'Médio',
       VEL: 'Médio',
-      FIN: 'Médio',
     },
-    weights: { PAS: 0.30, DRI: 0.20, VEL: 0.15, DEF: 0.15, FOR: 0.10, FIN: 0.10 },
+    weights: POSITION_OVR_WEIGHTS.MC,
   },
   MEI: {
     importance: {
       PAS: 'Crítico',
       DRI: 'Crítico',
       FIN: 'Alto',
-      VEL: 'Alto',
+      VEL: 'Médio',
+      DEF: 'Médio',
       FOR: 'Baixo',
-      DEF: 'Baixo',
     },
-    weights: { PAS: 0.30, DRI: 0.28, FIN: 0.18, VEL: 0.14, FOR: 0.05, DEF: 0.05 },
+    weights: POSITION_OVR_WEIGHTS.MEI,
   },
   PE: {
     importance: {
-      VEL: 'Crítico',
       DRI: 'Crítico',
+      VEL: 'Crítico',
       FIN: 'Alto',
       PAS: 'Médio',
+      DEF: 'Médio',
       FOR: 'Baixo',
-      DEF: 'Baixo',
     },
-    weights: { VEL: 0.32, DRI: 0.30, FIN: 0.20, PAS: 0.10, FOR: 0.04, DEF: 0.04 },
+    weights: POSITION_OVR_WEIGHTS.PE,
   },
   PD: {
     importance: {
-      VEL: 'Crítico',
       DRI: 'Crítico',
+      VEL: 'Crítico',
       FIN: 'Alto',
       PAS: 'Médio',
+      DEF: 'Médio',
       FOR: 'Baixo',
-      DEF: 'Baixo',
     },
-    weights: { VEL: 0.32, DRI: 0.30, FIN: 0.20, PAS: 0.10, FOR: 0.04, DEF: 0.04 },
+    weights: POSITION_OVR_WEIGHTS.PD,
   },
   ATA: {
     importance: {
       FIN: 'Crítico',
-      FOR: 'Alto',
+      DRI: 'Crítico',
       VEL: 'Alto',
-      DRI: 'Médio',
+      FOR: 'Médio',
       PAS: 'Baixo',
       DEF: 'Baixo',
     },
-    weights: { FIN: 0.38, VEL: 0.22, FOR: 0.18, DRI: 0.12, PAS: 0.06, DEF: 0.04 },
+    weights: POSITION_OVR_WEIGHTS.ATA,
   },
 };

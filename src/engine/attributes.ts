@@ -10,6 +10,7 @@ import {
   PositionId,
 } from '../types';
 import { ATTRIBUTE_IDS, ATTRIBUTES_DATA, POSITION_ATTRIBUTE_PROFILES } from '../data/attributes';
+import { calculateOVR } from './ovr';
 
 /**
  * Limita e sanitiza qualquer valor de atributo para a escala estrita [1, 100].
@@ -57,12 +58,14 @@ export function setAttribute(
   value: number
 ): Player {
   const safeValue = clampAttribute(value);
+  const newAttributes = {
+    ...player.attributes,
+    [attribute]: safeValue,
+  };
   return {
     ...player,
-    attributes: {
-      ...player.attributes,
-      [attribute]: safeValue,
-    },
+    attributes: newAttributes,
+    ovr: calculateOVR(newAttributes, player.position),
   };
 }
 

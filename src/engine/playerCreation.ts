@@ -10,6 +10,7 @@ import {
   Club,
 } from '../types';
 import { createInitialAttributes } from './attributes';
+import { calculateOVR } from './ovr';
 
 export interface PlayerCreationInput {
   firstName: string;
@@ -140,7 +141,7 @@ export function createNewPlayer(input: PlayerCreationInput): Player {
     position: input.position,
     kitNumber: input.kitNumber,
     attributes: baseAttributes,
-    ovr: 65, // OVR provisório neutro até o Prompt 06
+    ovr: calculateOVR(baseAttributes, input.position),
     aura: 50, // AURA inicial padrão
     xp: 0,
     level: 1,

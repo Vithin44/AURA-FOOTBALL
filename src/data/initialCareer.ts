@@ -2,8 +2,18 @@
  * AURA Football - Dados Iniciais Padrão para Criação/Reset da Carreira
  */
 
-import { Career } from '../types';
+import { Career, PlayerAttributes } from '../types';
 import { INITIAL_CLUBS } from './clubs';
+import { calculateOVR } from '../engine/ovr';
+
+const defaultAttributes: PlayerAttributes = {
+  VEL: 72,
+  FIN: 65,
+  DRI: 74,
+  FOR: 60,
+  PAS: 70,
+  DEF: 45,
+};
 
 export const INITIAL_CAREER_TEMPLATE: Career = {
   id: 'career_save_default',
@@ -18,15 +28,8 @@ export const INITIAL_CAREER_TEMPLATE: Career = {
     country: 'Brasil',
     position: 'MEI',
     kitNumber: 10,
-    attributes: {
-      VEL: 72,
-      FIN: 65,
-      DRI: 74,
-      FOR: 60,
-      PAS: 70,
-      DEF: 45,
-    },
-    ovr: 68,
+    attributes: defaultAttributes,
+    ovr: calculateOVR(defaultAttributes, 'MEI'),
     aura: 50, // Início neutro da AURA
     xp: 0,
     level: 1,

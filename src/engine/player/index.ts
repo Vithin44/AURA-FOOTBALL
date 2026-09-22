@@ -4,16 +4,23 @@
  */
 
 import { Player, PositionId, PlayerAttributes } from '../../types';
+import { calculateOVR, syncPlayerOVR } from '../ovr';
+
+export { calculateOVR, syncPlayerOVR };
 
 export class PlayerEngine {
   /**
-   * Stub de preparação para cálculo de OVR por pesos de posição
+   * Cálculo oficial de OVR por pesos de posição (Prompt 06)
    */
   public static calculateOVR(position: PositionId, attributes: PlayerAttributes): number {
-    // Cálculo inicial ponderado básico da fundação (será refinado pelo prompt específico)
-    const values = Object.values(attributes);
-    const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
-    return Math.round(avg);
+    return calculateOVR(attributes, position);
+  }
+
+  /**
+   * Sincroniza o OVR do jogador
+   */
+  public static syncOVR(player: Player): Player {
+    return syncPlayerOVR(player);
   }
 
   /**
@@ -23,3 +30,4 @@ export class PlayerEngine {
     return 50;
   }
 }
+

@@ -14,6 +14,7 @@ import { rng } from '../engine/rng';
 import { POSITION_IDS } from '../data/positions';
 import { ATTRIBUTE_IDS } from '../data/attributes';
 import { runAttributeTests, AttributeTestCaseResult } from '../engine/attributes';
+import { runOVRTests, OVRTestCaseResult } from '../engine/ovr';
 import {
   CheckCircle2,
   AlertCircle,
@@ -46,9 +47,16 @@ export function DiagnosticsPage() {
   const [attributeTestResults, setAttributeTestResults] = useState<AttributeTestCaseResult[]>(() =>
     runAttributeTests()
   );
+  const [ovrTestResults, setOvrTestResults] = useState<OVRTestCaseResult[]>(() =>
+    runOVRTests()
+  );
 
   const handleRunAttributeTests = () => {
     setAttributeTestResults(runAttributeTests());
+  };
+
+  const handleRunOVRTests = () => {
+    setOvrTestResults(runOVRTests());
   };
 
   const handleTestRNG = () => {
@@ -297,6 +305,80 @@ export function DiagnosticsPage() {
         {/* Lista dos 7 Casos de Teste */}
         <div className="space-y-2">
           {attributeTestResults.map((test) => (
+            <div
+              key={test.id}
+              className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                test.passed
+                  ? 'bg-[#111313] border-[#222626]'
+                  : 'bg-rose-950/20 border-rose-800/40'
+              }`}
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  {test.passed ? (
+                    <CheckCircle2 size={15} className="text-[#B7FF3C] shrink-0" />
+                  ) : (
+                    <AlertCircle size={15} className="text-rose-400 shrink-0" />
+                  )}
+                  <span className="font-semibold text-xs text-[#F4F5F2]">{test.name}</span>
+                </div>
+                <p className="text-xs text-[#8B918E] pl-6">{test.description}</p>
+                {test.details && (
+                  <p className="text-[11px] font-mono text-[#636B67] pl-6 mt-1">
+                    Detalhes: {test.details}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4 pl-6 md:pl-0 font-mono text-xs">
+                <div>
+                  <span className="text-[10px] text-[#555C59] block uppercase">Esperado:</span>
+                  <span className="text-[#8B918E]">{JSON.stringify(test.expected)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#555C59] block uppercase">Obtido:</span>
+                  <span className={test.passed ? 'text-[#B7FF3C] font-bold' : 'text-rose-400 font-bold'}>
+                    {JSON.stringify(test.actual)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Painel 6: Suíte de Testes Unitários de OVR (Prompt 06, Item 10) */}
+      <Card variant="dark" className="border-[#262B2B]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#191C1C] mb-4">
+          <div className="flex items-center gap-2">
+            <FlaskConical size={18} className="text-[#B7FF3C]" />
+            <div>
+              <h2 className="text-sm font-bold text-[#F4F5F2] uppercase tracking-wider">
+                Suíte de Testes do Sistema de OVR (Prompt 06, Item 10)
+              </h2>
+              <p className="text-xs text-[#8B918E]">
+                Validação estrita dos 9 casos oficiais: pesos de 100%, cálculo ponderado, sensibilidade posicional, arredondamento e integridade de limites [0, 100].
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge
+              variant={ovrTestResults.every((t) => t.passed) ? 'green' : 'red'}
+              className="py-1 px-2.5"
+            >
+              {ovrTestResults.filter((t) => t.passed).length} / {ovrTestResults.length} Passaram
+            </Badge>
+            <Button variant="secondary" size="sm" onClick={handleRunOVRTests}>
+              <RotateCcw size={13} />
+              Reexecutar Testes de OVR
+            </Button>
+          </div>
+        </div>
+
+        {/* Lista dos 9 Casos de Teste de OVR */}
+        <div className="space-y-2">
+          {ovrTestResults.map((test) => (
             <div
               key={test.id}
               className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
