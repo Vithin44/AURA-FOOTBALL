@@ -1,0 +1,6 @@
+{
+  "name": "AURA Football",
+  "description": "Simulador de carreira de jogador de futebol focado em viver a carreira, decisões em momentos-chave e evolução.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

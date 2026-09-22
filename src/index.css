@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-base: #080909;
+    --bg-dark: #111313;
+    --bg-soft: #191C1C;
+    --text-white: #F4F5F2;
+    --text-muted: #8B918E;
+    --aura-green: #B7FF3C;
+    --aura-red: #E5484D;
+    --aura-gold: #D9B65D;
+
+    --font-display: 'Archivo', system-ui, -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-white);
+    font-family: var(--font-display);
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Scrollbar sutil para Chromebooks e navegadores modernos */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #080909;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #191C1C;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #252A2A;
+}
