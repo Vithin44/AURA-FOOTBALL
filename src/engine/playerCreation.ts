@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { createInitialAttributes } from './attributes';
 import { calculateOVR } from './ovr';
+import { AURA_DEFAULT } from './aura';
 
 export interface PlayerCreationInput {
   firstName: string;
@@ -142,7 +143,7 @@ export function createNewPlayer(input: PlayerCreationInput): Player {
     kitNumber: input.kitNumber,
     attributes: baseAttributes,
     ovr: calculateOVR(baseAttributes, input.position),
-    aura: 50, // AURA inicial padrão
+    aura: AURA_DEFAULT, // AURA inicial padrão oficial (50)
     xp: 0,
     level: 1,
     status: 'Disponível',

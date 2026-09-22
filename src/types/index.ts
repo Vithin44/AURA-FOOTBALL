@@ -193,8 +193,36 @@ export interface Season {
 }
 
 // ====================================================
-// 7. PARTIDA (ESTRUTURA BASE PREPARADA)
+// 7. SISTEMA DE PARTIDAS (PROMPT 08 - FUNDAÇÃO OFICIAL)
 // ====================================================
+export type MatchStatus = 'scheduled' | 'live' | 'half_time' | 'finished' | 'cancelled';
+export type MatchPeriod = 'first_half' | 'half_time' | 'second_half' | 'finished';
+export type MatchVenue = 'home' | 'away';
+
+export interface MatchClock {
+  minute: number;       // 0 a 90 (minutos inteiros)
+  addedMinute?: number; // Para acréscimos futuros (ex: 45+2, 90+4)
+}
+
+export interface Match {
+  id: string;
+  competition: string;
+  season: number;
+  date: string;
+  minute: number;        // Minuto atual (0 a 90)
+  addedMinute?: number;  // Acréscimo
+  finalMinute: number;   // Minuto final regulamentar (90)
+  homeTeam: Club;        // Clube mandante
+  awayTeam: Club;        // Clube visitante
+  playerTeamId: string;  // ID do time do jogador
+  venue: MatchVenue;     // Mando do time do jogador: 'home' se joga em casa, 'away' se fora
+  homeScore: number;     // Placar do mandante (>= 0)
+  awayScore: number;     // Placar do visitante (>= 0)
+  status: MatchStatus;   // 'scheduled' | 'live' | 'half_time' | 'finished' | 'cancelled'
+  period: MatchPeriod;   // 'first_half' | 'half_time' | 'second_half' | 'finished'
+  seed: number;          // Semente determinística Mulberry32
+}
+
 export interface MatchSummary {
   id: string;
   homeClubId: string;

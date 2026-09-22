@@ -12,8 +12,8 @@ import { HubPage } from '../pages/HubPage';
 import { PlayerPage } from '../pages/PlayerPage';
 import { DiagnosticsPage } from '../pages/DiagnosticsPage';
 import { CharacterCreationPage } from '../pages/CharacterCreationPage';
+import { MatchPage } from '../pages/MatchPage';
 import {
-  MatchPage,
   ClubPage,
   CalendarPage,
   TrainingPage,

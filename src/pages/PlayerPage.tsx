@@ -23,6 +23,15 @@ import {
   createInitialAttributes,
 } from '../engine/attributes';
 import { calculateOVR } from '../engine/ovr';
+import { AuraIndicator } from '../components/AuraIndicator';
+import {
+  clampAura,
+  modifyAura,
+  setAura,
+  resetAura,
+  getAuraStatus,
+  AURA_DEFAULT,
+} from '../engine/aura';
 import {
   Zap,
   Edit3,
@@ -33,6 +42,8 @@ import {
   CheckCircle2,
   Info,
   Layers,
+  Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 
 export function PlayerPage() {
@@ -107,6 +118,27 @@ export function PlayerPage() {
     setTestFeedback(`Atributos restaurados para a distribuição equilibrada de ${player.position}.`);
   };
 
+  // Modificação de AURA pelo motor oficial de AURA (Prompt 07)
+  const handleModifyAura = (delta: number) => {
+    updatePlayer((prev) => modifyAura(prev, delta));
+    setTestFeedback(
+      `AURA alterada em ${delta > 0 ? `+${delta}` : delta}. Note que OVR (${player.ovr}) e os 6 atributos permanecem estritamente inalterados.`
+    );
+  };
+
+  const handleSetAura = (rawValue: number) => {
+    const clamped = clampAura(rawValue);
+    updatePlayer((prev) => setAura(prev, rawValue));
+    setTestFeedback(
+      `AURA definida para ${rawValue} (sanitizada pelo clamp para ${clamped}). OVR e atributos permanecem inalterados.`
+    );
+  };
+
+  const handleResetAura = () => {
+    updatePlayer((prev) => resetAura(prev));
+    setTestFeedback(`AURA restaurada para o padrão neutro inicial oficial (${AURA_DEFAULT}).`);
+  };
+
   // Cálculo ao vivo dos termos da fórmula para inspeção matemática transparente
   const currentWeights = POSITION_OVR_WEIGHTS[player.position];
   const breakdownTerms = ATTRIBUTE_IDS.map((attrId) => {
@@ -163,38 +195,57 @@ export function PlayerPage() {
           </Button>
 
           {/* Indicador de Status dos Atributos */}
-          <div className="text-center px-4 py-2.5 rounded-xl bg-[#191C1C] border border-[#262B2B]">
+          <div className="text-center px-3.5 py-2 rounded-xl bg-[#191C1C] border border-[#262B2B]">
             <span className="text-[10px] font-mono uppercase text-[#8B918E] block">ATRIBUTOS</span>
-            <span className="font-mono text-base font-black text-[#F4F5F2]">6 OFICIAIS</span>
+            <span className="font-mono text-xs font-bold text-[#F4F5F2]">6 OFICIAIS</span>
           </div>
 
-          {/* OVR: Destaque Oficial AURA Football (Prompt 06, Item 8) */}
+          {/* OVR: Destaque Oficial AURA Football (Prompt 06) */}
           <div
-            className="text-center px-5 py-2.5 rounded-2xl bg-[#191C1C] border-2 border-[#B7FF3C] shadow-lg shadow-[#B7FF3C]/10 flex flex-col items-center justify-center min-w-[105px]"
-            title="Overall oficial: média ponderada exata dos 6 atributos conforme os pesos da posição"
+            className="text-center px-4 py-2 rounded-2xl bg-[#191C1C] border border-[#2E3333] flex flex-col items-center justify-center min-w-[95px]"
+            title="Overall oficial: nível geral calculado pela média ponderada dos 6 atributos"
           >
             <span className="text-[10px] font-mono uppercase tracking-widest text-[#8B918E] block font-bold">
               OVR
             </span>
-            <span className="font-display text-4xl sm:text-5xl font-black text-[#B7FF3C] leading-none my-0.5 tracking-tight">
+            <span className="font-display text-3xl sm:text-4xl font-black text-[#F4F5F2] leading-none my-0.5 tracking-tight">
               {player.ovr}
             </span>
             <span className="text-[9px] font-mono text-[#8B918E] block uppercase">
               {player.position}
             </span>
           </div>
+
+          {/* AURA: Estado Momentâneo de Confiança e Desempenho (Prompt 07) */}
+          <div
+            className="text-center px-4 py-2 rounded-2xl bg-[#191C1C] border-2 border-[#B7FF3C] shadow-lg shadow-[#B7FF3C]/10 flex flex-col items-center justify-center min-w-[105px]"
+            title="AURA oficial: estado momentâneo de confiança e desempenho do atleta (escala 0–100, padrão neutro 50)"
+          >
+            <div className="flex items-center gap-1">
+              <Zap size={11} className="text-[#B7FF3C]" />
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#B7FF3C] block font-bold">
+                AURA
+              </span>
+            </div>
+            <span className="font-display text-3xl sm:text-4xl font-black text-[#B7FF3C] leading-none my-0.5 tracking-tight">
+              {player.aura}
+            </span>
+            <span className="text-[9px] font-mono text-[#8B918E] block uppercase">
+              {getAuraStatus(player.aura).label}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Aviso do Sistema: Regra do OVR (Prompt 06, Item 2 e 3) */}
+      {/* Aviso do Sistema: Regra do OVR e da AURA (Prompt 06 & 07) */}
       <div className="p-3.5 rounded-xl bg-[#111313] border border-[#262B2B] flex items-start gap-3 text-xs text-[#8B918E]">
         <Info size={16} className="text-[#B7FF3C] shrink-0 mt-0.5" />
         <div className="space-y-0.5">
           <span className="font-bold text-[#F4F5F2] block">
-            Cálculo Oficial de OVR (Overall) — AURA Football:
+            Diferença Oficial: OVR vs. AURA do Jogador:
           </span>
           <p>
-            O OVR é calculado deterministicamente pela média ponderada dos <strong>6 atributos oficiais</strong> segundo os pesos da posição <strong>{player.position}</strong> (totalizando 100%). Arredondado para o inteiro mais próximo e delimitado entre 0 e 100.
+            O <strong>OVR ({player.ovr})</strong> representa o nível técnico permanente/progressivo do atleta (calculado pelos 6 atributos ponderados para {player.position}). A <strong>AURA ({player.aura})</strong> representa o estado momentâneo de confiança/desempenho (escala 0–100, neutro 50). <strong>A AURA nunca altera o OVR nem os atributos.</strong>
           </p>
         </div>
       </div>
@@ -205,9 +256,21 @@ export function PlayerPage() {
         {/* COLUNA PRINCIPAL: OS 6 ATRIBUTOS OFICIAIS (7 Colunas) */}
         {/* ==================================================== */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between pb-1 border-b border-[#191C1C]">
+          {/* Card Interativo de AURA do Atleta (Prompt 07, Itens 10 & 11) */}
+          <AuraIndicator
+            value={player.aura}
+            size="md"
+            showBar={true}
+            showIntensityBadge={true}
+            showLabel={true}
+            showDescription={true}
+            interactive={true}
+            onModify={handleModifyAura}
+          />
+
+          <div className="flex items-center justify-between pb-1 border-b border-[#191C1C] pt-1">
             <div className="flex items-center gap-2">
-              <Zap size={16} className="text-[#B7FF3C]" />
+              <Layers size={16} className="text-[#B7FF3C]" />
               <h2 className="text-sm font-bold text-[#F4F5F2] uppercase tracking-wider">
                 6 Atributos Oficiais (Escala 1–100)
               </h2>
@@ -382,6 +445,117 @@ export function PlayerPage() {
                 >
                   ⚖️ Uniforme (Todos 70)
                 </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* 2. Laboratório de Testes de AURA (Prompt 07, Itens 2, 3, 5, 6, 12) */}
+          <Card variant="dark" className="border-[#2E3333]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#191C1C] mb-3">
+              <div className="flex items-center gap-2">
+                <Zap size={15} className="text-[#B7FF3C]" />
+                <h3 className="text-sm font-bold text-[#F4F5F2]">Laboratório de AURA do Atleta</h3>
+              </div>
+              <Badge variant="green" className="text-[10px]">Escala 0–100</Badge>
+            </div>
+
+            <p className="text-xs text-[#8B918E] mb-3">
+              Simule variações momentâneas de desempenho/confiança e comprove que <strong>AURA nunca altera OVR nem atributos</strong>:
+            </p>
+
+            {/* Ações Relativas Rápidas (modifyAura) */}
+            <div className="space-y-2 mb-3">
+              <span className="text-[10px] font-mono uppercase text-[#8B918E] block">
+                Modificações Relativas (modifyAura)
+              </span>
+              <div className="grid grid-cols-4 gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleModifyAura(10)}
+                  className="text-xs font-mono"
+                >
+                  +10
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleModifyAura(-10)}
+                  className="text-xs font-mono"
+                >
+                  -10
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleModifyAura(25)}
+                  className="text-xs font-mono"
+                >
+                  +25
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleModifyAura(-25)}
+                  className="text-xs font-mono"
+                >
+                  -25
+                </Button>
+              </div>
+            </div>
+
+            {/* Testes de Limites Extremos (clampAura) */}
+            <div className="space-y-2 mb-3 pt-2 border-t border-[#191C1C]">
+              <span className="text-[10px] font-mono uppercase text-[#8B918E] block">
+                Proteção Contra Limites Inválidos (clampAura)
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSetAura(120)}
+                  className="text-xs"
+                >
+                  Teto: 120 → 100
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSetAura(-20)}
+                  className="text-xs"
+                >
+                  Piso: -20 → 0
+                </Button>
+              </div>
+            </div>
+
+            {/* Botão de Reset Oficial (50) */}
+            <div className="pt-2 border-t border-[#191C1C]">
+              <Button
+                variant="secondary"
+                size="sm"
+                fullWidth
+                onClick={handleResetAura}
+                className="text-xs"
+              >
+                <RotateCcw size={13} />
+                Restaurar AURA Neutra Inicial ({AURA_DEFAULT})
+              </Button>
+            </div>
+
+            {/* Prova em Tempo Real das Invariantes do Prompt 07 */}
+            <div className="mt-3 p-2.5 rounded-xl bg-[#080909] border border-[#222626] space-y-1 text-[11px] font-mono">
+              <div className="flex items-center justify-between text-[#8B918E]">
+                <span>AURA Momentânea:</span>
+                <span className="text-[#B7FF3C] font-bold">{player.aura} / 100</span>
+              </div>
+              <div className="flex items-center justify-between text-[#8B918E]">
+                <span>OVR (Imune à AURA):</span>
+                <span className="text-[#F4F5F2] font-bold">{player.ovr} (Preservado)</span>
+              </div>
+              <div className="flex items-center justify-between text-[#8B918E]">
+                <span>Atributos (Imunes à AURA):</span>
+                <span className="text-[#F4F5F2] font-bold">VEL {player.attributes.VEL} | FIN {player.attributes.FIN}</span>
               </div>
             </div>
           </Card>

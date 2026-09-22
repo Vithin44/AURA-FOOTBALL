@@ -94,7 +94,7 @@ export function HubPage() {
             <div className="text-center px-2">
               <span className="text-[10px] font-mono uppercase text-[#8B918E] block">AURA</span>
               <span className="font-mono text-3xl font-black text-[#B7FF3C]">
-                {career.player.aura}%
+                {career.player.aura}
               </span>
             </div>
             <div className="w-px h-10 bg-[#262B2B]" />

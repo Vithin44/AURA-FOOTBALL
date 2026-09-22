@@ -5,6 +5,7 @@
 import { Career, PlayerAttributes } from '../types';
 import { INITIAL_CLUBS } from './clubs';
 import { calculateOVR } from '../engine/ovr';
+import { AURA_DEFAULT } from '../engine/aura';
 
 const defaultAttributes: PlayerAttributes = {
   VEL: 72,
@@ -30,7 +31,7 @@ export const INITIAL_CAREER_TEMPLATE: Career = {
     kitNumber: 10,
     attributes: defaultAttributes,
     ovr: calculateOVR(defaultAttributes, 'MEI'),
-    aura: 50, // Início neutro da AURA
+    aura: AURA_DEFAULT, // Início neutro oficial da AURA (50)
     xp: 0,
     level: 1,
     status: 'Disponível',

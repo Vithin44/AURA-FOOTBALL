@@ -98,7 +98,7 @@ export function TopBar() {
                   AURA
                 </span>
                 <span className="font-mono text-xs font-bold text-[#B7FF3C] leading-none">
-                  {career.player.aura}%
+                  {career.player.aura}
                 </span>
               </div>
               <div className="w-16 h-1.5 bg-[#191C1C] rounded-full overflow-hidden mt-1">

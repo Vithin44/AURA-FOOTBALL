@@ -15,6 +15,8 @@ import { POSITION_IDS } from '../data/positions';
 import { ATTRIBUTE_IDS } from '../data/attributes';
 import { runAttributeTests, AttributeTestCaseResult } from '../engine/attributes';
 import { runOVRTests, OVRTestCaseResult } from '../engine/ovr';
+import { runAuraTests, AuraTestCaseResult } from '../engine/aura';
+import { runMatchTests, MatchTestCaseResult } from '../engine/match';
 import {
   CheckCircle2,
   AlertCircle,
@@ -25,6 +27,8 @@ import {
   ArrowLeft,
   Terminal,
   FlaskConical,
+  Zap,
+  Swords,
 } from 'lucide-react';
 
 export function DiagnosticsPage() {
@@ -50,6 +54,12 @@ export function DiagnosticsPage() {
   const [ovrTestResults, setOvrTestResults] = useState<OVRTestCaseResult[]>(() =>
     runOVRTests()
   );
+  const [auraTestResults, setAuraTestResults] = useState<AuraTestCaseResult[]>(() =>
+    runAuraTests()
+  );
+  const [matchTestResults, setMatchTestResults] = useState<MatchTestCaseResult[]>(() =>
+    runMatchTests()
+  );
 
   const handleRunAttributeTests = () => {
     setAttributeTestResults(runAttributeTests());
@@ -57,6 +67,14 @@ export function DiagnosticsPage() {
 
   const handleRunOVRTests = () => {
     setOvrTestResults(runOVRTests());
+  };
+
+  const handleRunAuraTests = () => {
+    setAuraTestResults(runAuraTests());
+  };
+
+  const handleRunMatchTests = () => {
+    setMatchTestResults(runMatchTests());
   };
 
   const handleTestRNG = () => {
@@ -394,6 +412,157 @@ export function DiagnosticsPage() {
                   ) : (
                     <AlertCircle size={15} className="text-rose-400 shrink-0" />
                   )}
+                  <span className="font-semibold text-xs text-[#F4F5F2]">{test.name}</span>
+                </div>
+                <p className="text-xs text-[#8B918E] pl-6">{test.description}</p>
+                {test.details && (
+                  <p className="text-[11px] font-mono text-[#636B67] pl-6 mt-1">
+                    Detalhes: {test.details}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4 pl-6 md:pl-0 font-mono text-xs">
+                <div>
+                  <span className="text-[10px] text-[#555C59] block uppercase">Esperado:</span>
+                  <span className="text-[#8B918E]">{JSON.stringify(test.expected)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#555C59] block uppercase">Obtido:</span>
+                  <span className={test.passed ? 'text-[#B7FF3C] font-bold' : 'text-rose-400 font-bold'}>
+                    {JSON.stringify(test.actual)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Painel 7: Suíte de Testes da AURA ENGINE (Prompt 07, Itens 12 & 13) */}
+      <Card variant="dark" className="border-[#262B2B]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#191C1C] mb-4">
+          <div className="flex items-center gap-2">
+            <Zap size={18} className="text-[#B7FF3C]" />
+            <div>
+              <h2 className="text-sm font-bold text-[#F4F5F2] uppercase tracking-wider">
+                AURA ENGINE (Prompt 07, Itens 12 & 13)
+              </h2>
+              <p className="text-xs text-[#8B918E]">
+                Validação estrita dos 14 casos oficiais: AURA_DEFAULT=50, limites [0, 100], deltas relativos, reset e imunidade total de OVR, Atributos, XP, Nível e Influência.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge
+              variant={auraTestResults.every((t) => t.passed) ? 'green' : 'red'}
+              className="py-1 px-2.5 font-mono uppercase"
+            >
+              AURA ENGINE: {auraTestResults.filter((t) => t.passed).length}/{auraTestResults.length} TESTS PASSED
+            </Badge>
+            <Button variant="secondary" size="sm" onClick={handleRunAuraTests}>
+              <RotateCcw size={13} />
+              Reexecutar Testes de AURA
+            </Button>
+          </div>
+        </div>
+
+        {/* Lista dos 14 Casos de Teste de AURA */}
+        <div className="space-y-2">
+          {auraTestResults.map((test) => (
+            <div
+              key={test.id}
+              className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                test.passed
+                  ? 'bg-[#111313] border-[#222626]'
+                  : 'bg-rose-950/20 border-rose-800/40'
+              }`}
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  {test.passed ? (
+                    <CheckCircle2 size={15} className="text-[#B7FF3C] shrink-0" />
+                  ) : (
+                    <AlertCircle size={15} className="text-rose-400 shrink-0" />
+                  )}
+                  <span className="font-semibold text-xs text-[#F4F5F2]">{test.name}</span>
+                </div>
+                <p className="text-xs text-[#8B918E] pl-6">{test.description}</p>
+                {test.details && (
+                  <p className="text-[11px] font-mono text-[#636B67] pl-6 mt-1">
+                    Detalhes: {test.details}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4 pl-6 md:pl-0 font-mono text-xs">
+                <div>
+                  <span className="text-[10px] text-[#555C59] block uppercase">Esperado:</span>
+                  <span className="text-[#8B918E]">{JSON.stringify(test.expected)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#555C59] block uppercase">Obtido:</span>
+                  <span className={test.passed ? 'text-[#B7FF3C] font-bold' : 'text-rose-400 font-bold'}>
+                    {JSON.stringify(test.actual)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Painel 8: Suíte de Testes da MATCH ENGINE (Prompt 08 - Fundação da Partida) */}
+      <Card variant="dark" className="border-[#262B2B]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#191C1C] mb-4">
+          <div className="flex items-center gap-2">
+            <Swords size={18} className="text-[#B7FF3C]" />
+            <div>
+              <h2 className="text-sm font-bold text-[#F4F5F2] uppercase tracking-wider">
+                MATCH ENGINE (Prompt 08 - Fundação da Partida)
+              </h2>
+              <p className="text-xs text-[#8B918E]">
+                Validação estrita dos 21 casos oficiais: Minuto inicial 0, etapas (1º tempo, intervalo 45', 2º tempo, fim 90'), placar imutável, determinismo RNG e imunidade total de AURA, OVR e Atributos.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge
+              variant={matchTestResults.every((t) => t.passed) ? 'green' : 'red'}
+              className="py-1 px-2.5 font-mono uppercase"
+            >
+              MATCH ENGINE: {matchTestResults.filter((t) => t.passed).length}/{matchTestResults.length} TESTS PASSED
+            </Badge>
+            <Button variant="secondary" size="sm" onClick={handleRunMatchTests}>
+              <RotateCcw size={13} />
+              Reexecutar Testes de Partida
+            </Button>
+          </div>
+        </div>
+
+        {/* Lista dos 21 Casos de Teste de Match */}
+        <div className="space-y-2">
+          {matchTestResults.map((test) => (
+            <div
+              key={test.id}
+              className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                test.passed
+                  ? 'bg-[#111313] border-[#222626]'
+                  : 'bg-rose-950/20 border-rose-800/40'
+              }`}
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  {test.passed ? (
+                    <CheckCircle2 size={15} className="text-[#B7FF3C] shrink-0" />
+                  ) : (
+                    <AlertCircle size={15} className="text-rose-400 shrink-0" />
+                  )}
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#191C1C] text-[#8B918E] uppercase">
+                    {test.category}
+                  </span>
                   <span className="font-semibold text-xs text-[#F4F5F2]">{test.name}</span>
                 </div>
                 <p className="text-xs text-[#8B918E] pl-6">{test.description}</p>

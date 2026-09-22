@@ -5,6 +5,7 @@
 import { POSITION_IDS } from '../data/positions';
 import { ATTRIBUTE_IDS } from '../data/attributes';
 import { PositionId, AttributeId, PlayerAttributes, Career } from '../types';
+import { AURA_MIN, AURA_MAX } from './aura';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -37,6 +38,13 @@ export function isValidAttributeValue(val: unknown): boolean {
  */
 export function isValidFichas(val: unknown): boolean {
   return typeof val === 'number' && !isNaN(val) && val >= 0 && Number.isInteger(val);
+}
+
+/**
+ * Valida se o valor de AURA é válido (escala oficial 0 a 100)
+ */
+export function isValidAura(val: unknown): boolean {
+  return typeof val === 'number' && !isNaN(val) && val >= AURA_MIN && val <= AURA_MAX;
 }
 
 /**
