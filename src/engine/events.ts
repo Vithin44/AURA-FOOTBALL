@@ -15,6 +15,7 @@ import {
   Player,
 } from '../types';
 import { SeedableRNG, createRNG } from './rng';
+import { applyMatchEvent } from './match';
 
 /**
  * Mapeia importância padrão e relevância futura de cada tipo de evento.
@@ -451,24 +452,16 @@ export function runEventTests(): EventTestCaseResult[] {
       const rng = createRNG((seed + min * 10007) >>> 0);
       const minEvents = generateMinuteEvents(m, min, rng, p);
 
-      let hScore = m.homeScore;
-      let aScore = m.awayScore;
-      for (const e of minEvents) {
-        if (e.type === 'goal') {
-          if (e.teamId === m.homeTeam.id) hScore++;
-          else if (e.teamId === m.awayTeam.id) aScore++;
-        }
-      }
-
       m = {
         ...m,
         minute: min,
         status: nextStatus,
         period: nextPeriod,
-        homeScore: hScore,
-        awayScore: aScore,
-        events: [...m.events, ...minEvents],
       };
+
+      for (const e of minEvents) {
+        m = applyMatchEvent(m, e);
+      }
     }
     return m;
   };
@@ -762,55 +755,97 @@ export function runEventTests(): EventTestCaseResult[] {
 
   // 18. gol atualiza o placar
   {
+    const matchBefore: Match = {
+      ...baseMatch,
+      status: 'live',
+      homeScore: 0,
+      awayScore: 0,
+    };
     const evtGoal = createMatchEvent({
-      matchId: baseMatch.id,
+      matchId: matchBefore.id,
       minute: 23,
       type: 'goal',
       teamId: home.id,
       team: home,
       seed: 123,
     });
-    // Simulando aplicação do gol no placar oficial
-    const updatedHomeScore = baseMatch.homeScore + (evtGoal.teamId === home.id ? 1 : 0);
-    const passed = updatedHomeScore === 1;
+    // Fluxo real: EVENTO GOAL -> ENGINE DA PARTIDA (applyMatchEvent -> scoreGoal) -> ATUALIZAÇÃO DO PLACAR
+    const matchAfter = applyMatchEvent(matchBefore, evtGoal);
+    const passed =
+      matchAfter.homeScore === matchBefore.homeScore + 1 &&
+      matchAfter.events.some((e) => e.id === evtGoal.id);
     results.push({
       id: 18,
       category: 'Placar',
       name: 'Gol atualiza o placar oficial',
-      description: 'A ocorrência de evento de gol eleva o placar do time que marcou',
-      expected: 1,
-      actual: updatedHomeScore,
+      description: 'Evento de gol processado pela engine de partida atualiza o placar via scoreGoal',
+      expected: matchBefore.homeScore + 1,
+      actual: matchAfter.homeScore,
       passed,
     });
   }
 
   // 19. gol do mandante não altera visitante
   {
-    const scoreBefore = { home: 0, away: 0 };
-    const scoreAfter = { home: scoreBefore.home + 1, away: scoreBefore.away };
+    const matchBefore: Match = {
+      ...baseMatch,
+      status: 'live',
+      homeScore: 0,
+      awayScore: 0,
+    };
+    const evtGoalHome = createMatchEvent({
+      matchId: matchBefore.id,
+      minute: 34,
+      type: 'goal',
+      teamId: home.id,
+      team: home,
+      seed: 124,
+    });
+    // Cenário real: processamento de evento de gol do mandante via Match Engine
+    const matchAfter = applyMatchEvent(matchBefore, evtGoalHome);
+    const passed =
+      matchAfter.homeScore === matchBefore.homeScore + 1 &&
+      matchAfter.awayScore === matchBefore.awayScore;
     results.push({
       id: 19,
       category: 'Placar',
       name: 'Gol do mandante preserva visitante',
-      description: 'Gol marcado pelo mandante não sofre vazamento para o placar do visitante',
-      expected: 0,
-      actual: scoreAfter.away,
-      passed: scoreAfter.away === 0,
+      description: 'Evento de gol do mandante processado pela engine eleva homeScore e mantém awayScore estritamente igual',
+      expected: { homeScore: matchBefore.homeScore + 1, awayScore: matchBefore.awayScore },
+      actual: { homeScore: matchAfter.homeScore, awayScore: matchAfter.awayScore },
+      passed,
     });
   }
 
   // 20. gol do visitante não altera mandante
   {
-    const scoreBefore = { home: 1, away: 0 };
-    const scoreAfter = { home: scoreBefore.home, away: scoreBefore.away + 1 };
+    const matchBefore: Match = {
+      ...baseMatch,
+      status: 'live',
+      homeScore: 1,
+      awayScore: 0,
+    };
+    const evtGoalAway = createMatchEvent({
+      matchId: matchBefore.id,
+      minute: 58,
+      type: 'goal',
+      teamId: away.id,
+      team: away,
+      seed: 125,
+    });
+    // Cenário real: processamento de evento de gol do visitante via Match Engine
+    const matchAfter = applyMatchEvent(matchBefore, evtGoalAway);
+    const passed =
+      matchAfter.awayScore === matchBefore.awayScore + 1 &&
+      matchAfter.homeScore === matchBefore.homeScore;
     results.push({
       id: 20,
       category: 'Placar',
       name: 'Gol do visitante preserva mandante',
-      description: 'Gol marcado pelo visitante não altera o placar do mandante',
-      expected: 1,
-      actual: scoreAfter.home,
-      passed: scoreAfter.home === 1,
+      description: 'Evento de gol do visitante processado pela engine eleva awayScore e mantém homeScore estritamente igual',
+      expected: { homeScore: matchBefore.homeScore, awayScore: matchBefore.awayScore + 1 },
+      actual: { homeScore: matchAfter.homeScore, awayScore: matchAfter.awayScore },
+      passed,
     });
   }
 

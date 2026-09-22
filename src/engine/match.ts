@@ -181,29 +181,19 @@ export function advanceMatchMinute(match: Match, userPlayer?: Player): Match {
   const eventRng = createRNG((match.seed + nextMinute * 10007) >>> 0);
   const minuteEvents = generateMinuteEvents(match, nextMinute, eventRng, userPlayer);
 
-  // Unificação de placar: se houver gol entre os eventos gerados, atualiza placar
-  let nextHomeScore = match.homeScore;
-  let nextAwayScore = match.awayScore;
-
-  for (const evt of minuteEvents) {
-    if (evt.type === 'goal') {
-      if (evt.teamId === match.homeTeam.id) {
-        nextHomeScore += 1;
-      } else if (evt.teamId === match.awayTeam.id) {
-        nextAwayScore += 1;
-      }
-    }
-  }
-
-  return {
+  // Processamento e unificação oficial dos eventos do minuto através da Match Engine
+  let updatedMatch: Match = {
     ...match,
     minute: nextMinute,
     status: nextStatus,
     period: nextPeriod,
-    homeScore: nextHomeScore,
-    awayScore: nextAwayScore,
-    events: [...match.events, ...minuteEvents],
   };
+
+  for (const evt of minuteEvents) {
+    updatedMatch = applyMatchEvent(updatedMatch, evt);
+  }
+
+  return updatedMatch;
 }
 
 /**
@@ -226,6 +216,34 @@ export function scoreGoal(match: Match, team: 'home' | 'away', count = 1): Match
     homeScore: nextHomeScore,
     awayScore: nextAwayScore,
   };
+}
+
+/**
+ * Processa um evento oficial na partida, integrando-o ao estado do jogo.
+ * Quando o evento for do tipo 'goal', utiliza exclusivamente a lógica oficial de placar
+ * centralizada na Match Engine (scoreGoal).
+ * Não cria fontes paralelas de verdade.
+ */
+export function applyMatchEvent(match: Match, event: MatchEvent): Match {
+  let updatedMatch = match;
+
+  if (event.type === 'goal') {
+    if (event.teamId === match.homeTeam.id) {
+      updatedMatch = scoreGoal(updatedMatch, 'home', 1);
+    } else if (event.teamId === match.awayTeam.id) {
+      updatedMatch = scoreGoal(updatedMatch, 'away', 1);
+    }
+  }
+
+  // Registra o evento no histórico da partida se ainda não estiver presente
+  if (!updatedMatch.events.some((e) => e.id === event.id)) {
+    updatedMatch = {
+      ...updatedMatch,
+      events: [...updatedMatch.events, event],
+    };
+  }
+
+  return updatedMatch;
 }
 
 /**
