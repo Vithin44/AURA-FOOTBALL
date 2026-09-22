@@ -216,6 +216,8 @@ export type MatchEventType =
   | 'red_card'
   | 'injury'
   | 'substitution'
+  | 'free_kick'
+  | 'penalty'
   | 'half_time'
   | 'full_time';
 
@@ -232,6 +234,38 @@ export interface MatchEvent {
   description: string;
   importance: MatchEventImportance;
   isSignificant: boolean;
+  seed: number;
+}
+
+// ====================================================
+// 7.1 SISTEMA DE MOMENTOS (PROMPT 10)
+// ====================================================
+export type MatchMomentStatus = 'pending' | 'active' | 'resolved' | 'expired' | 'cancelled';
+
+export type MatchMomentType =
+  | 'chance'
+  | 'shot'
+  | 'goal_chance'
+  | 'one_on_one'
+  | 'cross'
+  | 'corner'
+  | 'free_kick'
+  | 'penalty'
+  | 'defensive';
+
+export interface MatchMoment {
+  id: string;
+  matchId: string;
+  eventId: string;
+  minute: number;
+  addedMinute?: number;
+  type: MatchMomentType;
+  title: string;
+  description: string;
+  importance: MatchEventImportance;
+  playerId: string;
+  teamId: string;
+  status: MatchMomentStatus;
   seed: number;
 }
 
@@ -253,6 +287,7 @@ export interface Match {
   period: MatchPeriod;   // 'first_half' | 'half_time' | 'second_half' | 'finished'
   seed: number;          // Semente determinística Mulberry32
   events: MatchEvent[];  // Registro cronológico oficial de eventos da partida
+  moments: MatchMoment[]; // Registro cronológico oficial de momentos da partida
 }
 
 export interface MatchSummary {

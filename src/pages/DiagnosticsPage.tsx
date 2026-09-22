@@ -18,6 +18,7 @@ import { runOVRTests, OVRTestCaseResult } from '../engine/ovr';
 import { runAuraTests, AuraTestCaseResult } from '../engine/aura';
 import { runMatchTests, MatchTestCaseResult } from '../engine/match';
 import { runEventTests, EventTestCaseResult } from '../engine/events';
+import { runMomentTests, MomentTestCaseResult } from '../engine/moments';
 import {
   CheckCircle2,
   AlertCircle,
@@ -31,6 +32,7 @@ import {
   Zap,
   Swords,
   Radio,
+  Flame,
 } from 'lucide-react';
 
 export function DiagnosticsPage() {
@@ -65,6 +67,9 @@ export function DiagnosticsPage() {
   const [eventTestResults, setEventTestResults] = useState<EventTestCaseResult[]>(() =>
     runEventTests()
   );
+  const [momentTestResults, setMomentTestResults] = useState<MomentTestCaseResult[]>(() =>
+    runMomentTests()
+  );
 
   const handleRunAttributeTests = () => {
     setAttributeTestResults(runAttributeTests());
@@ -84,6 +89,10 @@ export function DiagnosticsPage() {
 
   const handleRunEventTests = () => {
     setEventTestResults(runEventTests());
+  };
+
+  const handleRunMomentTests = () => {
+    setMomentTestResults(runMomentTests());
   };
 
   const handleTestRNG = () => {
@@ -631,6 +640,83 @@ export function DiagnosticsPage() {
         {/* Lista dos 27 Casos de Teste de Eventos */}
         <div className="space-y-2">
           {eventTestResults.map((test) => (
+            <div
+              key={test.id}
+              className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                test.passed
+                  ? 'bg-[#111313] border-[#222626]'
+                  : 'bg-rose-950/20 border-rose-800/40'
+              }`}
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  {test.passed ? (
+                    <CheckCircle2 size={15} className="text-[#B7FF3C] shrink-0" />
+                  ) : (
+                    <AlertCircle size={15} className="text-rose-400 shrink-0" />
+                  )}
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#191C1C] text-[#8B918E] uppercase">
+                    {test.category}
+                  </span>
+                  <span className="font-semibold text-xs text-[#F4F5F2]">{test.name}</span>
+                </div>
+                <p className="text-xs text-[#8B918E] pl-6">{test.description}</p>
+                {test.details && (
+                  <p className="text-[11px] font-mono text-[#636B67] pl-6 mt-1">
+                    Detalhes: {test.details}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4 pl-6 md:pl-0 font-mono text-xs">
+                <div>
+                  <span className="text-[10px] text-[#555C59] block uppercase">Esperado:</span>
+                  <span className="text-[#8B918E]">{JSON.stringify(test.expected)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#555C59] block uppercase">Obtido:</span>
+                  <span className={test.passed ? 'text-[#B7FF3C] font-bold' : 'text-rose-400 font-bold'}>
+                    {JSON.stringify(test.actual)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Painel 10: Suíte de Testes da MOMENTS ENGINE (Prompt 10 - Sistema de Momentos) */}
+      <Card variant="dark" className="border-[#262B2B]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#191C1C] mb-4">
+          <div className="flex items-center gap-2">
+            <Flame size={18} className="text-[#B7FF3C]" />
+            <div>
+              <h2 className="text-sm font-bold text-[#F4F5F2] uppercase tracking-wider">
+                MOMENTS ENGINE (Prompt 10 - Sistema de Momentos)
+              </h2>
+              <p className="text-xs text-[#8B918E]">
+                Validação estrita dos 26 casos oficiais: Estrutura MatchMoment, conversão controlada (Evento ≠ Momento), determinismo estrito, limite máximo por partida, cooldown entre lances, e integridade absoluta de OVR, Atributos, AURA, XP, Influência e Placar.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge
+              variant={momentTestResults.every((t) => t.passed) ? 'green' : 'red'}
+              className="py-1 px-2.5 font-mono uppercase"
+            >
+              MOMENTS ENGINE: {momentTestResults.filter((t) => t.passed).length}/{momentTestResults.length} TESTES APROVADOS
+            </Badge>
+            <Button variant="secondary" size="sm" onClick={handleRunMomentTests}>
+              <RotateCcw size={13} />
+              Reexecutar Testes de Momentos
+            </Button>
+          </div>
+        </div>
+
+        {/* Lista dos 26 Casos de Teste de Momentos */}
+        <div className="space-y-2">
+          {momentTestResults.map((test) => (
             <div
               key={test.id}
               className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${

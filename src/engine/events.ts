@@ -426,6 +426,7 @@ export function runEventTests(): EventTestCaseResult[] {
     period: 'first_half',
     seed: 42091,
     events: [],
+    moments: [],
   };
 
   // Simulação completa de 90 minutos para inspeção de eventos

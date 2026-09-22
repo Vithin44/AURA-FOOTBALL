@@ -13,12 +13,14 @@ import {
   Club,
   Player,
   MatchEvent,
+  MatchMoment,
 } from '../types';
 import { createRNG } from './rng';
 import {
   generateStructuralEvent,
   generateMinuteEvents,
 } from './events';
+import { evaluateAndProcessMoments } from './moments';
 
 // Constantes Regulamentares Oficiais do AURA Football
 export const MATCH_START_MINUTE = 0;
@@ -38,6 +40,7 @@ export interface CreateMatchParams {
   seed?: number;
   initialStatus?: MatchStatus;
   events?: MatchEvent[];
+  moments?: MatchMoment[];
 }
 
 /**
@@ -48,10 +51,10 @@ export function createMatch(params: CreateMatchParams): Match {
     params.venue ?? (params.homeTeam.id === params.playerTeamId ? 'home' : 'away');
 
   return {
-    id: params.id ?? `match_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    id: params.id ?? (params.seed !== undefined ? `match_${params.seed}` : `match_${params.homeTeam.id}_vs_${params.awayTeam.id}`),
     competition: params.competition ?? 'Campeonato Estadual',
     season: params.season ?? 1,
-    date: params.date ?? new Date().toISOString().split('T')[0],
+    date: params.date ?? '2026-09-22',
     minute: MATCH_START_MINUTE,
     addedMinute: undefined,
     finalMinute: MATCH_REGULATION_MINUTES,
@@ -65,6 +68,7 @@ export function createMatch(params: CreateMatchParams): Match {
     period: 'first_half',
     seed: params.seed ?? 123456789,
     events: params.events ?? [],
+    moments: params.moments ?? [],
   };
 }
 
@@ -191,6 +195,17 @@ export function advanceMatchMinute(match: Match, userPlayer?: Player): Match {
 
   for (const evt of minuteEvents) {
     updatedMatch = applyMatchEvent(updatedMatch, evt);
+  }
+
+  // Avaliação e criação determinística de Momentos (Prompt 10)
+  if (userPlayer) {
+    const newMoments = evaluateAndProcessMoments(updatedMatch, minuteEvents, userPlayer);
+    if (newMoments.length > 0) {
+      updatedMatch = {
+        ...updatedMatch,
+        moments: [...updatedMatch.moments, ...newMoments],
+      };
+    }
   }
 
   return updatedMatch;

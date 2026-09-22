@@ -46,6 +46,7 @@ import {
   Radio,
   Activity,
   Filter,
+  Flame,
 } from 'lucide-react';
 
 export function MatchPage() {
@@ -398,10 +399,110 @@ export function MatchPage() {
         </div>
       </div>
 
-      {/* Grid Informativo: Regras Centrais e Log de Transição de Minutos */}
+      {/* Banner de Destaque: MOMENTO DISPONÍVEL / ATIVO (Prompt 10, Seções 29 e 30) */}
+      {match.moments.length > 0 && (
+        <div className="mb-6 p-4 rounded-2xl border border-[#B7FF3C]/40 bg-[#121A14] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase bg-[#B7FF3C] text-[#080909]">
+                MOMENTO DISPONÍVEL
+              </span>
+              <span className="text-xs font-mono font-bold text-[#B7FF3C]">
+                {match.moments[match.moments.length - 1].minute}'
+              </span>
+              <span className="text-xs font-mono uppercase text-[#8B918E]">
+                [{match.moments[match.moments.length - 1].status === 'pending' ? 'ATIVO' : match.moments[match.moments.length - 1].status.toUpperCase()}]
+              </span>
+            </div>
+            <h3 className="text-lg font-black text-[#F4F5F2] font-display uppercase tracking-tight">
+              {match.moments[match.moments.length - 1].title}
+            </h3>
+            <p className="text-xs text-[#D8DDD9]">
+              {match.moments[match.moments.length - 1].description}
+            </p>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[10px] font-mono text-[#8B918E] bg-[#191C1C] px-2.5 py-1 rounded-lg border border-[#262B2B]">
+              Decisões estarão disponíveis em breve
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Grid Informativo: Momentos, Regras Centrais e Feed de Eventos */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Painel de Regras da Engine (Prompt 08) */}
+        {/* Coluna da Esquerda: Momentos e Regras da Engine */}
         <div className="lg:col-span-6 space-y-4">
+          {/* Card Oficial de Momentos (Prompt 10) */}
+          <Card variant="dark" className="border-[#262B2B]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#191C1C] mb-3">
+              <div className="flex items-center gap-2">
+                <Flame size={16} className="text-[#B7FF3C]" />
+                <h3 className="text-sm font-bold text-[#F4F5F2] uppercase tracking-wider font-mono">
+                  MOMENTOS
+                </h3>
+              </div>
+              <Badge variant={match.moments.length > 0 ? 'green' : 'dark'} className="text-[10px] font-mono">
+                {match.moments.length} {match.moments.length === 1 ? 'MOMENTO' : 'MOMENTOS'}
+              </Badge>
+            </div>
+
+            {/* Lista dos Momentos da Partida */}
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {match.moments.length === 0 ? (
+                <div className="p-6 text-center text-xs font-mono text-[#555C59]">
+                  Nenhum momento gerado ainda. Momentos surgem em lances especiais do seu atleta.
+                </div>
+              ) : (
+                match.moments
+                  .slice()
+                  .reverse()
+                  .map((moment, idx) => (
+                    <div
+                      key={moment.id}
+                      className={`p-3.5 rounded-xl border transition-all ${
+                        idx === 0
+                          ? 'bg-[#152014] border-[#B7FF3C]/50 shadow-sm shadow-[#B7FF3C]/5'
+                          : 'bg-[#111313] border-[#222626]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-sm text-[#B7FF3C] bg-[#191C1C] px-2 py-0.5 rounded border border-[#2A2E2E]">
+                            {moment.minute}'
+                          </span>
+                          <span className="font-display font-black text-xs uppercase tracking-wider text-[#F4F5F2]">
+                            {moment.title}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`text-[9px] font-mono uppercase font-black px-2 py-0.5 rounded ${
+                              idx === 0
+                                ? 'bg-[#B7FF3C] text-[#080909]'
+                                : 'bg-[#191C1C] text-[#8B918E] border border-[#2A2E2E]'
+                            }`}
+                          >
+                            {moment.status === 'pending' ? (idx === 0 ? 'ATIVO' : 'PENDENTE') : moment.status.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-[#D8DDD9] leading-relaxed pl-0.5">
+                        {moment.description}
+                      </p>
+
+                      <div className="mt-2.5 pt-2 border-t border-[#1C2220] flex items-center justify-between text-[10px] font-mono text-[#8B918E]">
+                        <span>TIPO: {moment.type.toUpperCase()}</span>
+                        <span className="text-[#555C59]">ESTADO: {moment.status.toUpperCase()}</span>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+          </Card>
+
+          {/* Painel de Regras da Engine (Prompt 08) */}
           <Card variant="dark" className="border-[#262B2B]">
             <div className="flex items-center gap-2 pb-3 border-b border-[#191C1C] mb-3">
               <Info size={16} className="text-[#B7FF3C]" />
