@@ -193,7 +193,7 @@ export interface Season {
 }
 
 // ====================================================
-// 7. SISTEMA DE PARTIDAS (PROMPT 08 - FUNDAÇÃO OFICIAL)
+// 7. SISTEMA DE PARTIDAS & EVENTOS (PROMPTS 08 & 09)
 // ====================================================
 export type MatchStatus = 'scheduled' | 'live' | 'half_time' | 'finished' | 'cancelled';
 export type MatchPeriod = 'first_half' | 'half_time' | 'second_half' | 'finished';
@@ -202,6 +202,37 @@ export type MatchVenue = 'home' | 'away';
 export interface MatchClock {
   minute: number;       // 0 a 90 (minutos inteiros)
   addedMinute?: number; // Para acréscimos futuros (ex: 45+2, 90+4)
+}
+
+export type MatchEventType =
+  | 'kickoff'
+  | 'chance'
+  | 'shot'
+  | 'goal'
+  | 'save'
+  | 'corner'
+  | 'foul'
+  | 'yellow_card'
+  | 'red_card'
+  | 'injury'
+  | 'substitution'
+  | 'half_time'
+  | 'full_time';
+
+export type MatchEventImportance = 'low' | 'normal' | 'high' | 'critical';
+
+export interface MatchEvent {
+  id: string;
+  matchId: string;
+  minute: number;
+  addedMinute?: number;
+  type: MatchEventType;
+  teamId: string;
+  playerId?: string;
+  description: string;
+  importance: MatchEventImportance;
+  isSignificant: boolean;
+  seed: number;
 }
 
 export interface Match {
@@ -221,6 +252,7 @@ export interface Match {
   status: MatchStatus;   // 'scheduled' | 'live' | 'half_time' | 'finished' | 'cancelled'
   period: MatchPeriod;   // 'first_half' | 'half_time' | 'second_half' | 'finished'
   seed: number;          // Semente determinística Mulberry32
+  events: MatchEvent[];  // Registro cronológico oficial de eventos da partida
 }
 
 export interface MatchSummary {

@@ -3,7 +3,7 @@
  * Implementação Mulberry32 controlável com suporte a Seed para simulações reproduzíveis.
  */
 
-class SeedableRNG {
+export class SeedableRNG {
   private seed: number;
 
   constructor(initialSeed = Date.now()) {

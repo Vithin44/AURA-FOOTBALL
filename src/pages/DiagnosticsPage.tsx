@@ -17,6 +17,7 @@ import { runAttributeTests, AttributeTestCaseResult } from '../engine/attributes
 import { runOVRTests, OVRTestCaseResult } from '../engine/ovr';
 import { runAuraTests, AuraTestCaseResult } from '../engine/aura';
 import { runMatchTests, MatchTestCaseResult } from '../engine/match';
+import { runEventTests, EventTestCaseResult } from '../engine/events';
 import {
   CheckCircle2,
   AlertCircle,
@@ -29,6 +30,7 @@ import {
   FlaskConical,
   Zap,
   Swords,
+  Radio,
 } from 'lucide-react';
 
 export function DiagnosticsPage() {
@@ -60,6 +62,9 @@ export function DiagnosticsPage() {
   const [matchTestResults, setMatchTestResults] = useState<MatchTestCaseResult[]>(() =>
     runMatchTests()
   );
+  const [eventTestResults, setEventTestResults] = useState<EventTestCaseResult[]>(() =>
+    runEventTests()
+  );
 
   const handleRunAttributeTests = () => {
     setAttributeTestResults(runAttributeTests());
@@ -75,6 +80,10 @@ export function DiagnosticsPage() {
 
   const handleRunMatchTests = () => {
     setMatchTestResults(runMatchTests());
+  };
+
+  const handleRunEventTests = () => {
+    setEventTestResults(runEventTests());
   };
 
   const handleTestRNG = () => {
@@ -545,6 +554,83 @@ export function DiagnosticsPage() {
         {/* Lista dos 21 Casos de Teste de Match */}
         <div className="space-y-2">
           {matchTestResults.map((test) => (
+            <div
+              key={test.id}
+              className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                test.passed
+                  ? 'bg-[#111313] border-[#222626]'
+                  : 'bg-rose-950/20 border-rose-800/40'
+              }`}
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  {test.passed ? (
+                    <CheckCircle2 size={15} className="text-[#B7FF3C] shrink-0" />
+                  ) : (
+                    <AlertCircle size={15} className="text-rose-400 shrink-0" />
+                  )}
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#191C1C] text-[#8B918E] uppercase">
+                    {test.category}
+                  </span>
+                  <span className="font-semibold text-xs text-[#F4F5F2]">{test.name}</span>
+                </div>
+                <p className="text-xs text-[#8B918E] pl-6">{test.description}</p>
+                {test.details && (
+                  <p className="text-[11px] font-mono text-[#636B67] pl-6 mt-1">
+                    Detalhes: {test.details}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4 pl-6 md:pl-0 font-mono text-xs">
+                <div>
+                  <span className="text-[10px] text-[#555C59] block uppercase">Esperado:</span>
+                  <span className="text-[#8B918E]">{JSON.stringify(test.expected)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#555C59] block uppercase">Obtido:</span>
+                  <span className={test.passed ? 'text-[#B7FF3C] font-bold' : 'text-rose-400 font-bold'}>
+                    {JSON.stringify(test.actual)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Painel 9: Suíte de Testes da EVENT ENGINE (Prompt 09 - Engine de Eventos da Partida) */}
+      <Card variant="dark" className="border-[#262B2B]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#191C1C] mb-4">
+          <div className="flex items-center gap-2">
+            <Radio size={18} className="text-[#B7FF3C]" />
+            <div>
+              <h2 className="text-sm font-bold text-[#F4F5F2] uppercase tracking-wider">
+                EVENT ENGINE (Prompt 09 - Engine de Eventos da Partida)
+              </h2>
+              <p className="text-xs text-[#8B918E]">
+                Validação estrita dos 27 casos oficiais: Tipagem MatchEvent, eventos estruturais (0', 45', 46', 90'), eventos espontâneos, determinismo estrito, atualização de placar unificada e integridade de OVR, Atributos, AURA, XP e Influência.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge
+              variant={eventTestResults.every((t) => t.passed) ? 'green' : 'red'}
+              className="py-1 px-2.5 font-mono uppercase"
+            >
+              EVENT ENGINE: {eventTestResults.filter((t) => t.passed).length}/{eventTestResults.length} TESTS PASSED
+            </Badge>
+            <Button variant="secondary" size="sm" onClick={handleRunEventTests}>
+              <RotateCcw size={13} />
+              Reexecutar Testes de Eventos
+            </Button>
+          </div>
+        </div>
+
+        {/* Lista dos 27 Casos de Teste de Eventos */}
+        <div className="space-y-2">
+          {eventTestResults.map((test) => (
             <div
               key={test.id}
               className={`p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${

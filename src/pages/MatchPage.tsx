@@ -43,6 +43,9 @@ import {
   ArrowRight,
   Plus,
   CheckCircle2,
+  Radio,
+  Activity,
+  Filter,
 } from 'lucide-react';
 
 export function MatchPage() {
@@ -72,12 +75,15 @@ export function MatchPage() {
     'Partida de teste criada e pronta para o pontapé inicial.',
   ]);
 
+  // Filtro de eventos do log
+  const [eventFilter, setEventFilter] = useState<'all' | 'significant' | 'player'>('all');
+
   // Avança 1 minuto na engine
   const handleAdvanceMinute = () => {
     if (!canAdvanceMatch(match)) return;
 
     setMatch((prev) => {
-      const next = advanceMatchMinute(prev);
+      const next = advanceMatchMinute(prev, career.player);
       let eventMsg = `Minuto ${formatMatchClock(next)}: partida em andamento.`;
 
       if (next.status === 'half_time') {
@@ -100,7 +106,7 @@ export function MatchPage() {
     if (match.status === 'finished') return;
 
     setMatch((prev) => {
-      const simulated = simulateMatch(prev);
+      const simulated = simulateMatch(prev, career.player);
       setLog((l) => [
         `Simulação completa concluída: Partida finalizada aos 90 minutos. Placar: ${simulated.homeTeam.shortName} ${simulated.homeScore} x ${simulated.awayScore} ${simulated.awayTeam.shortName}.`,
         ...l.slice(0, 19),
@@ -436,33 +442,138 @@ export function MatchPage() {
           </Card>
         </div>
 
-        {/* Feed de Eventos do Relógio da Partida */}
+        {/* Feed de Eventos da Partida (Prompt 09 - Engine de Eventos) */}
         <div className="lg:col-span-6 space-y-4">
           <Card variant="dark" className="border-[#262B2B]">
-            <div className="flex items-center justify-between pb-3 border-b border-[#191C1C] mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#191C1C] mb-3 gap-2">
               <div className="flex items-center gap-2">
-                <Clock size={16} className="text-[#B7FF3C]" />
+                <Radio size={16} className="text-[#B7FF3C]" />
                 <h3 className="text-sm font-bold text-[#F4F5F2] uppercase tracking-wider font-mono">
-                  Registro de Transições de Minutos
+                  Feed de Eventos da Partida
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-[#8B918E]">Últimos lances</span>
-            </div>
-
-            <div className="space-y-1.5 max-h-56 overflow-y-auto font-mono text-xs pr-1">
-              {log.map((item, idx) => (
-                <div
-                  key={idx}
-                  className={`p-2 rounded-lg border ${
-                    idx === 0
-                      ? 'bg-[#191C1C] border-[#B7FF3C]/30 text-[#F4F5F2]'
-                      : 'bg-[#080909] border-[#191C1C] text-[#8B918E]'
+              
+              {/* Filtros rápidos de eventos */}
+              <div className="flex items-center gap-1 font-mono text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setEventFilter('all')}
+                  className={`px-2 py-0.5 rounded transition-colors ${
+                    eventFilter === 'all'
+                      ? 'bg-[#B7FF3C] text-[#080909] font-bold'
+                      : 'bg-[#191C1C] text-[#8B918E] hover:text-[#F4F5F2]'
                   }`}
                 >
-                  <span className="text-[10px] text-[#555C59] mr-2">[{log.length - idx}]</span>
-                  {item}
+                  Todos ({match.events.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEventFilter('significant')}
+                  className={`px-2 py-0.5 rounded transition-colors ${
+                    eventFilter === 'significant'
+                      ? 'bg-[#B7FF3C] text-[#080909] font-bold'
+                      : 'bg-[#191C1C] text-[#8B918E] hover:text-[#F4F5F2]'
+                  }`}
+                >
+                  Relevantes ({match.events.filter((e) => e.isSignificant).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEventFilter('player')}
+                  className={`px-2 py-0.5 rounded transition-colors ${
+                    eventFilter === 'player'
+                      ? 'bg-[#B7FF3C] text-[#080909] font-bold'
+                      : 'bg-[#191C1C] text-[#8B918E] hover:text-[#F4F5F2]'
+                  }`}
+                >
+                  Meu Atleta ({match.events.filter((e) => e.playerId === career.player.id).length})
+                </button>
+              </div>
+            </div>
+
+            {/* Lista com scroll cronológico dos eventos gerados */}
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {match.events.length === 0 ? (
+                <div className="p-6 text-center text-xs font-mono text-[#555C59]">
+                  Nenhum evento registrado. Clique em AVANÇAR 1 MINUTO ou SIMULAR PARTIDA.
                 </div>
-              ))}
+              ) : (
+                match.events
+                  .filter((e) => {
+                    if (eventFilter === 'significant') return e.isSignificant;
+                    if (eventFilter === 'player') return e.playerId === career.player.id;
+                    return true;
+                  })
+                  .slice()
+                  .reverse()
+                  .map((evt) => {
+                    const isUserPlayer = evt.playerId === career.player.id;
+                    const isHomeTeam = evt.teamId === match.homeTeam.id;
+                    const teamShort = isHomeTeam ? match.homeTeam.shortName : match.awayTeam.shortName;
+
+                    return (
+                      <div
+                        key={evt.id}
+                        className={`p-2.5 rounded-xl border transition-all text-xs ${
+                          evt.type === 'goal'
+                            ? 'bg-[#142010] border-[#B7FF3C]/40'
+                            : evt.importance === 'high'
+                            ? 'bg-[#1A1812] border-amber-500/30'
+                            : isUserPlayer
+                            ? 'bg-[#161C19] border-[#B7FF3C]/30'
+                            : 'bg-[#111313] border-[#222626]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                            <span className="font-bold text-[#B7FF3C] bg-[#191C1C] px-1.5 py-0.5 rounded border border-[#2A2E2E]">
+                              {evt.minute}'
+                            </span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded font-bold uppercase ${
+                                evt.type === 'goal'
+                                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                  : evt.type === 'shot' || evt.type === 'chance'
+                                  ? 'bg-amber-400/20 text-amber-300'
+                                  : evt.type === 'yellow_card'
+                                  ? 'bg-yellow-400/20 text-yellow-300'
+                                  : evt.type === 'red_card'
+                                  ? 'bg-rose-500/20 text-rose-300'
+                                  : 'bg-[#191C1C] text-[#8B918E]'
+                              }`}
+                            >
+                              {evt.type}
+                            </span>
+                            <span className="text-[#8B918E]">[{teamShort}]</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {isUserPlayer && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#B7FF3C]/20 text-[#B7FF3C] font-bold uppercase border border-[#B7FF3C]/30">
+                                SEU ATLETA
+                              </span>
+                            )}
+                            <span
+                              className={`text-[9px] font-mono uppercase px-1 rounded ${
+                                evt.importance === 'critical'
+                                  ? 'text-rose-400 font-bold'
+                                  : evt.importance === 'high'
+                                  ? 'text-amber-400'
+                                  : 'text-[#555C59]'
+                              }`}
+                            >
+                              {evt.importance}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-[#D8DDD9] text-xs leading-relaxed font-sans pl-1">
+                          {evt.description}
+                        </p>
+                      </div>
+                    );
+                  })
+              )}
             </div>
           </Card>
         </div>

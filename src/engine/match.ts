@@ -5,8 +5,20 @@
  * Prepara estrutura de etapas, placar, mando, acréscimos e preservação da AURA e OVR.
  */
 
-import { Match, MatchStatus, MatchPeriod, MatchVenue, Club, Player } from '../types';
+import {
+  Match,
+  MatchStatus,
+  MatchPeriod,
+  MatchVenue,
+  Club,
+  Player,
+  MatchEvent,
+} from '../types';
 import { createRNG } from './rng';
+import {
+  generateStructuralEvent,
+  generateMinuteEvents,
+} from './events';
 
 // Constantes Regulamentares Oficiais do AURA Football
 export const MATCH_START_MINUTE = 0;
@@ -25,6 +37,7 @@ export interface CreateMatchParams {
   venue?: MatchVenue;
   seed?: number;
   initialStatus?: MatchStatus;
+  events?: MatchEvent[];
 }
 
 /**
@@ -51,22 +64,26 @@ export function createMatch(params: CreateMatchParams): Match {
     status: params.initialStatus ?? 'scheduled',
     period: 'first_half',
     seed: params.seed ?? 123456789,
+    events: params.events ?? [],
   };
 }
 
 /**
- * Inicia oficialmente uma partida agendada.
+ * Inicia oficialmente uma partida agendada com o evento estrutural de pontapé inicial.
  */
 export function startMatch(match: Match): Match {
   if (match.status !== 'scheduled') {
     return match;
   }
 
+  const kickoffEvent = generateStructuralEvent(match, 'kickoff', match.seed);
+
   return {
     ...match,
     status: 'live',
     period: 'first_half',
     minute: MATCH_START_MINUTE,
+    events: [kickoffEvent],
   };
 }
 
@@ -116,72 +133,76 @@ export function getMatchStatusLabel(match: Match): string {
  * 45 (Intervalo) -> 46 (2º Tempo)
  * 89 -> 90 (Fim de Jogo)
  * 90 (Fim de Jogo) -> impede avanços posteriores
+ *
+ * Gera eventos estruturais e espontâneos com SeedableRNG determinístico (Prompt 09),
+ * atualizando o placar unificado quando ocorre evento de gol.
  */
-export function advanceMatchMinute(match: Match): Match {
+export function advanceMatchMinute(match: Match, userPlayer?: Player): Match {
   if (!canAdvanceMatch(match)) {
     return match;
+  }
+
+  // Se a partida estava agendada, o primeiro avanço a ativa e pontua o kickoff
+  if (match.status === 'scheduled') {
+    const started = startMatch(match);
+    return advanceMatchMinute(started, userPlayer);
   }
 
   let nextMinute = match.minute + 1;
   let nextStatus: MatchStatus = 'live';
   let nextPeriod: MatchPeriod = match.period;
 
-  // Se a partida estava agendada, o primeiro avanço a ativa e vai para minuto 1
-  if (match.status === 'scheduled') {
-    return {
-      ...match,
-      minute: 1,
-      status: 'live',
-      period: 'first_half',
-    };
-  }
-
   // Se estiver no intervalo no minuto 45, o próximo avanço reinicia o jogo no 2º tempo (46')
   if (match.status === 'half_time' || match.period === 'half_time') {
-    return {
-      ...match,
-      minute: MATCH_SECOND_HALF_START_MINUTE, // 46
-      status: 'live',
-      period: 'second_half',
-    };
+    nextMinute = MATCH_SECOND_HALF_START_MINUTE; // 46
+    nextStatus = 'live';
+    nextPeriod = 'second_half';
+  } else if (nextMinute === MATCH_HALF_TIME_MINUTE) {
+    // Transição para o intervalo exatamente ao atingir o 45º minuto
+    nextMinute = MATCH_HALF_TIME_MINUTE;
+    nextStatus = 'half_time';
+    nextPeriod = 'half_time';
+  } else if (nextMinute < MATCH_HALF_TIME_MINUTE) {
+    // Primeiro tempo regular (1 a 44)
+    nextStatus = 'live';
+    nextPeriod = 'first_half';
+  } else if (nextMinute < MATCH_REGULATION_MINUTES) {
+    // Segundo tempo regular (46 a 89)
+    nextStatus = 'live';
+    nextPeriod = 'second_half';
+  } else {
+    // Final da partida exatamente no minuto 90
+    nextMinute = MATCH_REGULATION_MINUTES;
+    nextStatus = 'finished';
+    nextPeriod = 'finished';
   }
 
-  // Transição para o intervalo exatamente ao atingir o 45º minuto
-  if (nextMinute === MATCH_HALF_TIME_MINUTE) {
-    return {
-      ...match,
-      minute: MATCH_HALF_TIME_MINUTE,
-      status: 'half_time',
-      period: 'half_time',
-    };
+  // Geração determinística de eventos para o minuto que acabou de ocorrer
+  const eventRng = createRNG((match.seed + nextMinute * 10007) >>> 0);
+  const minuteEvents = generateMinuteEvents(match, nextMinute, eventRng, userPlayer);
+
+  // Unificação de placar: se houver gol entre os eventos gerados, atualiza placar
+  let nextHomeScore = match.homeScore;
+  let nextAwayScore = match.awayScore;
+
+  for (const evt of minuteEvents) {
+    if (evt.type === 'goal') {
+      if (evt.teamId === match.homeTeam.id) {
+        nextHomeScore += 1;
+      } else if (evt.teamId === match.awayTeam.id) {
+        nextAwayScore += 1;
+      }
+    }
   }
 
-  // Primeiro tempo regular (1 a 44)
-  if (nextMinute < MATCH_HALF_TIME_MINUTE) {
-    return {
-      ...match,
-      minute: nextMinute,
-      status: 'live',
-      period: 'first_half',
-    };
-  }
-
-  // Segundo tempo regular (46 a 89)
-  if (nextMinute < MATCH_REGULATION_MINUTES) {
-    return {
-      ...match,
-      minute: nextMinute,
-      status: 'live',
-      period: 'second_half',
-    };
-  }
-
-  // Final da partida exatamente no minuto 90
   return {
     ...match,
-    minute: MATCH_REGULATION_MINUTES,
-    status: 'finished',
-    period: 'finished',
+    minute: nextMinute,
+    status: nextStatus,
+    period: nextPeriod,
+    homeScore: nextHomeScore,
+    awayScore: nextAwayScore,
+    events: [...match.events, ...minuteEvents],
   };
 }
 
@@ -250,25 +271,20 @@ export function getOpponentScore(match: Match): number {
 }
 
 /**
- * Simulação base sequencial e determinística da partida até o apito final (90').
+ * Simulação sequencial e determinística da partida até o apito final (90').
  * Utiliza o SeedableRNG do projeto para garantir reprodutibilidade matemática.
- * Na fundação do Prompt 08, não gera momentos ou gols aleatórios.
+ * Registra os eventos oficiais de jogo e estruturais a cada minuto.
  */
-export function simulateMatch(match: Match): Match {
+export function simulateMatch(match: Match, userPlayer?: Player): Match {
   let current = match.status === 'scheduled' ? startMatch(match) : match;
 
   if (current.status === 'finished' || current.status === 'cancelled') {
     return current;
   }
 
-  // Inicializa RNG isolado com a semente da partida
-  const matchRng = createRNG(current.seed);
-
   // Avança minuto a minuto determinísticamente até o minuto 90
   while (canAdvanceMatch(current)) {
-    // Consumo determinístico de seed para futuros eventos de simulação
-    matchRng.nextFloat();
-    current = advanceMatchMinute(current);
+    current = advanceMatchMinute(current, userPlayer);
   }
 
   return current;
